@@ -1,0 +1,2129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ular Tangga: Analisis Vektor - S1 Fisika</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- KaTeX untuk Notasi Vektor & Kalkulus Medan -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.3s ease-out forwards',
+                        'pop-in': 'popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                        'pulse-slow': 'pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        popIn: {
+                            '0%': { opacity: '0', transform: 'scale(0.9) translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: radial-gradient(circle at top left, #1e293b 0%, #0f172a 48%, #e2e8f0 48.2%, #f1f5f9 100%);
+            min-height: 100vh;
+        }
+
+        /* Dadu 3D CSS */
+        .dice-scene {
+            width: 72px;
+            height: 72px;
+            perspective: 400px;
+        }
+        .dice-cube {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .dice-cube.rolling {
+            animation: diceSpin 0.55s linear infinite;
+        }
+        @keyframes diceSpin {
+            0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            50% { transform: rotateX(180deg) rotateY(220deg) rotateZ(90deg); }
+            100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(180deg); }
+        }
+        .dice-face {
+            position: absolute;
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(145deg, #ffffff, #f1f5f9);
+            border: 2px solid #cbd5e1;
+            border-radius: 14px;
+            box-shadow: inset 0 0 10px rgba(15, 23, 42, 0.08);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            padding: 10px;
+            place-items: center;
+        }
+        .pip {
+            width: 12px;
+            height: 12px;
+            border-radius: 9999px;
+            background: #0f172a;
+            box-shadow: inset 0 1px 2px rgba(255,255,255,0.4);
+        }
+        .pip.red {
+            background: #dc2626;
+            width: 14px;
+            height: 14px;
+        }
+        .face-1 { transform: rotateY(0deg) translateZ(36px); }
+        .face-2 { transform: rotateY(90deg) translateZ(36px); }
+        .face-3 { transform: rotateY(180deg) translateZ(36px); }
+        .face-4 { transform: rotateY(-90deg) translateZ(36px); }
+        .face-5 { transform: rotateX(90deg) translateZ(36px); }
+        .face-6 { transform: rotateX(-90deg) translateZ(36px); }
+
+        /* Pion Pemain */
+        .player-token {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-radius: 9999px;
+            border: 2px solid #ffffff;
+            box-shadow: 0 4px 8px rgba(15, 23, 42, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 9px;
+            letter-spacing: -0.02em;
+            color: white;
+            z-index: 30;
+            transition: left 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.2s ease;
+            pointer-events: none;
+        }
+        @media (min-width: 640px) {
+            .player-token {
+                width: 27px;
+                height: 27px;
+                font-size: 10px;
+            }
+        }
+        .player-token.sliding {
+            transition: left 0.85s cubic-bezier(0.22, 1, 0.36, 1), top 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .player-token.active-turn {
+            transform: scale(1.22);
+            z-index: 45;
+            box-shadow: 0 0 0 3px #fbbf24, 0 8px 16px rgba(15, 23, 42, 0.55);
+        }
+
+        /* Konfeti Kemenangan */
+        .confetti-piece {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            top: -20px;
+            z-index: 100;
+            animation: confettiFall linear forwards;
+        }
+        @keyframes confettiFall {
+            to {
+                transform: translateY(105vh) rotate(720deg);
+            }
+        }
+
+        .katex { font-size: 1.03em; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased flex flex-col justify-between selection:bg-amber-400 selection:text-slate-950">
+
+    <!-- ==================== HEADER ==================== -->
+    <header class="w-full max-w-7xl mx-auto px-4 pt-4 pb-2 flex items-center justify-between text-white">
+        <div class="flex items-center gap-3 cursor-pointer" onclick="confirmResetToLobby()">
+            <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 flex items-center justify-center font-extrabold text-2xl shadow-lg shadow-amber-500/25">
+                ∇
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="font-extrabold text-base sm:text-xl tracking-tight text-white leading-none">
+                        Ular Tangga: Analisis Vektor
+                    </h1>
+                    <span class="px-2 py-0.5 rounded bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-extrabold uppercase tracking-wider">
+                        S1 Fisika
+                    </span>
+                </div>
+                <p class="text-xs text-slate-300 mt-0.5">Board Game Edukatif Kalkulus Medan & Teorema Vektor</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button onclick="openRulesModal()" class="px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors">
+                <i class="fa-solid fa-circle-question text-amber-400"></i>
+                <span class="hidden sm:inline">Aturan Main</span>
+            </button>
+            <button onclick="toggleSound()" id="soundBtn" title="Toggle Suara" class="w-10 h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-amber-400 flex items-center justify-center transition-colors">
+                <i id="soundIcon" class="fa-solid fa-volume-high"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- ==================== MAIN CONTAINER ==================== -->
+    <main class="w-full max-w-7xl mx-auto px-4 py-2 flex-grow flex items-center justify-center">
+
+        <!-- 1. LAYAR PENGATURAN PEMAIN (LOBBY) -->
+        <section id="lobbyScreen" class="w-full max-w-4xl bg-white/95 backdrop-blur rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 animate-fade-in my-4">
+            <div class="border-b border-slate-200 pb-5 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 text-amber-400 text-xs font-bold uppercase tracking-wider mb-2">
+                        <i class="fa-solid fa-dice"></i>
+                        <span>Simulasi Kelas Besar • Hingga 10 Kelompok</span>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">Pengaturan Permainan Kelas</h2>
+                    <p class="text-sm text-slate-600 mt-1">
+                        Papan <strong>6×6 (36 Petak)</strong> dengan pengacakan penuh soal & opsi jawaban, timer kuis, mode rebutan, dan pengawas fokus anti-contek.
+                    </p>
+                </div>
+                <div class="bg-slate-100 border border-slate-200 rounded-2xl px-4 py-2.5 shrink-0 text-right">
+                    <div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Kode Sesi Acak</div>
+                    <div class="flex items-center justify-end gap-2 mt-0.5">
+                        <span id="sessionSeedDisplay" class="font-mono font-extrabold text-sm text-slate-900">VEC-8492</span>
+                        <button type="button" onclick="regenerateSessionSeed()" title="Acak ulang ID sesi" class="text-xs text-slate-500 hover:text-slate-900">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pilih Mode Permainan -->
+            <div class="mb-6">
+                <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-3">
+                    1. Pilih Mode Pemain
+                </label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button type="button" onclick="setGameMode('multi')" id="modeMultiBtn" class="p-4 rounded-2xl border-2 border-slate-900 bg-slate-900 text-white text-left transition-all flex items-start gap-3.5 shadow-md">
+                        <div class="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 font-bold text-lg">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm sm:text-base">Mode Kelas (2–10 Kelompok)</div>
+                            <p class="text-xs text-slate-300 mt-0.5">Mendukung K-01 s.d. K-10 lengkap dengan fitur <strong>Mode Rebutan</strong> & rekap nilai.</p>
+                        </div>
+                    </button>
+
+                    <button type="button" onclick="setGameMode('ai')" id="modeAiBtn" class="p-4 rounded-2xl border-2 border-slate-200 bg-white hover:border-slate-400 text-slate-800 text-left transition-all flex items-start gap-3.5">
+                        <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 font-bold text-lg">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm sm:text-base">1 Pemain vs AI Fisikawan</div>
+                            <p class="text-xs text-slate-500 mt-0.5">Latihan mandiri menantang <strong>Prof. Gauss (AI)</strong> di papan 36 petak.</p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Jumlah Kelompok & Timer Kuis -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-6">
+                <div id="playerCountWrapper" class="md:col-span-7">
+                    <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2.5">
+                        2. Jumlah Kelompok Mahasiswa (2 – 10 Kelompok)
+                    </label>
+                    <div class="grid grid-cols-5 sm:grid-cols-9 gap-1.5" id="countButtonsGrid">
+                        <!-- Tombol 2..10 di-render JS -->
+                    </div>
+                </div>
+
+                <div class="md:col-span-5">
+                    <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2.5">
+                        3. Batas Waktu Per Soal (Anti-Contek)
+                    </label>
+                    <select id="timerDurationSelect" class="w-full py-2.5 px-3.5 rounded-xl border-2 border-slate-200 bg-white font-bold text-sm text-slate-800 focus:outline-none focus:border-slate-900">
+                        <option value="60">60 Detik (Cepat & Ketat)</option>
+                        <option value="90" selected>90 Detik (Standar Kelas)</option>
+                        <option value="120">120 Detik (Hitungan Integral)</option>
+                        <option value="0">Tanpa Batas Waktu</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Kustomisasi Nama Kelompok -->
+            <div class="mb-7">
+                <div class="flex items-center justify-between mb-3">
+                    <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                        Daftar Kelompok & Warna Pion (Dapat Diedit)
+                    </label>
+                    <span id="activeGroupCountLabel" class="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg">10 Kelompok Aktif</span>
+                </div>
+                <div id="playerInputsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 max-h-60 overflow-y-auto pr-1">
+                    <!-- Di-render dinamis JS -->
+                </div>
+            </div>
+
+            <!-- Ringkasan Tangga, Ular & Bonus di Papan 6x6 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-7 text-xs">
+                <div class="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
+                    <div class="font-extrabold text-emerald-900 mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-stairs text-emerald-600"></i> 5 Tangga Vektor (Benar = Naik!)
+                    </div>
+                    <ul class="text-emerald-800 space-y-0.5 font-medium text-[11px]">
+                        <li>• Petak 3 → 14 (Gradien Potensial $\nabla V$)</li>
+                        <li>• Petak 8 → 19 (Divergensi Fluks $\nabla\cdot\mathbf{F}$)</li>
+                        <li>• Petak 11 → 24 (Curl Medan $\nabla\times\mathbf{F}$)</li>
+                        <li>• Petak 16 → 28 (Identitas BAC-CAB)</li>
+                        <li>• Petak 21 → 32 (Teorema Stokes)</li>
+                    </ul>
+                </div>
+                <div class="p-3.5 rounded-2xl bg-rose-50 border border-rose-200">
+                    <div class="font-extrabold text-rose-900 mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-staff-snake text-rose-600"></i> 5 Ular Medan (Salah = Turun!)
+                    </div>
+                    <ul class="text-rose-800 space-y-0.5 font-medium text-[11px]">
+                        <li>• Petak 13 → 4 (Medan Non-Konservatif)</li>
+                        <li>• Petak 18 → 7 (Singularity $1/r$)</li>
+                        <li>• Petak 25 → 12 (Fluks Permukaan Bocor)</li>
+                        <li>• Petak 30 → 15 (Lupa Tanda Minus $-\nabla V$)</li>
+                        <li>• Petak 35 → 22 (Arah Normal $\hat{n}$ Terbalik)</li>
+                    </ul>
+                </div>
+                <div class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200">
+                    <div class="font-extrabold text-amber-900 mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-shield-halved text-amber-600"></i> Mekanika Kelas & Anti-Contek
+                    </div>
+                    <ul class="text-amber-900 space-y-0.5 font-medium text-[11px]">
+                        <li>• <strong>Petak Bonus ∇ (6, 20, 29):</strong> Benar = <strong>+2 Langkah</strong>!</li>
+                        <li>• <strong>Fisher-Yates Shuffle:</strong> Soal & opsi acak tiap giliran.</li>
+                        <li>• <strong>Mode Rebutan:</strong> Salah jawab? Kelompok lain bisa merebut +1 langkah!</li>
+                        <li>• <strong>Focus Guard:</strong> Deteksi otomatis jika pindah tab/window.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <button onclick="startBoardGame()" class="w-full py-4 px-6 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-extrabold text-base sm:text-lg shadow-xl shadow-slate-900/20 transition-all flex items-center justify-center gap-3">
+                <i class="fa-solid fa-play"></i>
+                <span>Mulai Permainan Kelas (Papan 36 Petak)</span>
+            </button>
+        </section>
+
+        <!-- 2. LAYAR UTAMA PAPAN PERMAINAN (BOARD + SIDEBAR) -->
+        <section id="boardScreen" class="hidden w-full grid grid-cols-1 lg:grid-cols-12 gap-5 items-start my-2 animate-fade-in">
+
+            <!-- KOLOM KIRI: PAPAN ULAR TANGGA 6x6 + DADU + LOG (7 Kolom di Desktop) -->
+            <div class="lg:col-span-7 space-y-4">
+                <div class="bg-white/95 backdrop-blur rounded-3xl p-3.5 sm:p-5 shadow-2xl border border-slate-200">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3 px-1">
+                        <div class="flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-600">
+                            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-100 text-emerald-800"><i class="fa-solid fa-stairs"></i> 5 Tangga</span>
+                            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-rose-100 text-rose-800"><i class="fa-solid fa-staff-snake"></i> 5 Ular</span>
+                            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-amber-100 text-amber-800"><i class="fa-solid fa-bolt"></i> Bonus +2</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="boardSessionBadge" class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">SESI: VEC-8492</span>
+                            <span class="text-xs font-mono font-extrabold text-slate-800">Petak 1 → 36</span>
+                        </div>
+                    </div>
+
+                    <!-- Kontainer Papan 6x6 Aspek Rasio Persegi -->
+                    <div class="relative w-full aspect-square max-w-[620px] mx-auto rounded-2xl overflow-hidden border-4 border-slate-900 shadow-inner bg-slate-100 select-none" id="boardWrapper">
+                        <!-- Grid 6x6 Petak -->
+                        <div id="boardGrid" class="w-full h-full grid grid-cols-6 grid-rows-6">
+                            <!-- 36 petak di-generate JS -->
+                        </div>
+
+                        <!-- SVG Overlay untuk Tangga & Ular Presisi (Skala 600x600) -->
+                        <svg id="boardSvgOverlay" viewBox="0 0 600 600" class="absolute inset-0 w-full h-full pointer-events-none z-20">
+                            <!-- Tangga dan Ular digambar otomatis via JS -->
+                        </svg>
+
+                        <!-- Layer Pion Pemain -->
+                        <div id="tokensLayer" class="absolute inset-0 w-full h-full pointer-events-none z-30">
+                            <!-- Pion pemain di-render JS dengan Smart Micro-Grid -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Log Aktivitas Real-Time -->
+                <div class="bg-white/95 backdrop-blur rounded-3xl p-4 sm:p-5 shadow-xl border border-slate-200">
+                    <div class="flex items-center justify-between mb-2.5">
+                        <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                            <i class="fa-solid fa-terminal text-slate-700"></i>
+                            <span>Log Aktivitas & Pengawasan Kelas</span>
+                        </h4>
+                        <span id="deckRemainingBadge" class="text-[11px] font-mono font-bold text-slate-500">Sisa Dek Soal: 20/20</span>
+                    </div>
+                    <div id="activityLog" class="h-32 overflow-y-auto space-y-1.5 text-xs pr-1 font-medium text-slate-600">
+                        <!-- Log di-render JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- KOLOM KANAN: PANEL KONTROL DADU & KLASEMEN 10 KELOMPOK (5 Kolom di Desktop) -->
+            <div class="lg:col-span-5 space-y-4">
+
+                <!-- Kartu Giliran & Dadu 3D -->
+                <div class="bg-white/95 backdrop-blur rounded-3xl p-5 shadow-xl border border-slate-200">
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex-grow min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Giliran Aktif</span>
+                                <span id="turnCodeBadge" class="px-2 py-0.5 rounded bg-slate-900 text-amber-400 font-mono font-extrabold text-[10px]">K-01</span>
+                            </div>
+                            <div class="flex items-center gap-2.5">
+                                <span id="turnColorDot" class="w-4 h-4 rounded-full bg-blue-600 shrink-0 shadow"></span>
+                                <h3 id="turnPlayerName" class="text-lg sm:text-xl font-extrabold text-slate-900 truncate">
+                                    K-01 • Kelompok 1
+                                </h3>
+                            </div>
+                            <p id="turnStatusText" class="text-xs font-semibold text-slate-600 mt-1">
+                                Klik dadu atau tekan <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px]">Spasi</kbd> untuk melempar!
+                            </p>
+                        </div>
+
+                        <!-- Dadu 3D Interaktif -->
+                        <div class="flex flex-col items-center gap-2 shrink-0">
+                            <div class="dice-scene cursor-pointer" onclick="triggerDiceRoll()" title="Klik untuk melempar dadu">
+                                <div id="diceCube" class="dice-cube">
+                                    <!-- Face 1 -->
+                                    <div class="dice-face face-1">
+                                        <span></span><span></span><span></span>
+                                        <span></span><span class="pip red"></span><span></span>
+                                        <span></span><span></span><span></span>
+                                    </div>
+                                    <!-- Face 2 -->
+                                    <div class="dice-face face-2">
+                                        <span class="pip"></span><span></span><span></span>
+                                        <span></span><span></span><span></span>
+                                        <span></span><span></span><span class="pip"></span>
+                                    </div>
+                                    <!-- Face 3 -->
+                                    <div class="dice-face face-3">
+                                        <span class="pip"></span><span></span><span></span>
+                                        <span></span><span class="pip"></span><span></span>
+                                        <span></span><span></span><span class="pip"></span>
+                                    </div>
+                                    <!-- Face 4 -->
+                                    <div class="dice-face face-4">
+                                        <span class="pip"></span><span></span><span class="pip"></span>
+                                        <span></span><span></span><span></span>
+                                        <span class="pip"></span><span></span><span class="pip"></span>
+                                    </div>
+                                    <!-- Face 5 -->
+                                    <div class="dice-face face-5">
+                                        <span class="pip"></span><span></span><span class="pip"></span>
+                                        <span></span><span class="pip"></span><span></span>
+                                        <span class="pip"></span><span></span><span class="pip"></span>
+                                    </div>
+                                    <!-- Face 6 -->
+                                    <div class="dice-face face-6">
+                                        <span class="pip"></span><span></span><span class="pip"></span>
+                                        <span class="pip"></span><span></span><span class="pip"></span>
+                                        <span class="pip"></span><span></span><span class="pip"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 flex items-center gap-2">
+                        <button id="rollDiceBtn" onclick="triggerDiceRoll()" class="flex-grow py-3.5 px-5 rounded-2xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:pointer-events-none text-amber-400 font-extrabold text-sm shadow-lg shadow-slate-900/15 transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-dice text-base"></i>
+                            <span>Lempar Dadu</span>
+                        </button>
+                        <button onclick="openQuestionPreviewBank()" title="Lihat Statistik Sesi" class="py-3.5 px-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all" aria-label="Rekap Sementara">
+                            <i class="fa-solid fa-chart-simple text-base"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Papan Posisi & Skor 10 Kelompok -->
+                <div class="bg-white/95 backdrop-blur rounded-3xl p-4 sm:p-5 shadow-xl border border-slate-200">
+                    <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-3 flex items-center justify-between">
+                        <span><i class="fa-solid fa-ranking-star text-amber-500 mr-1.5"></i>Klasemen & Status Kelompok</span>
+                        <span class="text-[11px] font-mono font-bold text-slate-400">Target: Petak 36</span>
+                    </h4>
+                    <div id="scoreboardList" class="space-y-2 max-h-[430px] overflow-y-auto pr-1">
+                        <!-- Kartu 10 kelompok di-render JS -->
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 3. LAYAR KEMENANGAN (PODIUM & REKAP NILAI KELAS) -->
+        <section id="victoryScreen" class="hidden w-full max-w-4xl bg-white/95 backdrop-blur rounded-3xl p-6 sm:p-9 shadow-2xl border border-slate-200 animate-pop-in my-4 text-center">
+            <div class="w-20 h-20 mx-auto mb-4 rounded-3xl bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 flex items-center justify-center text-4xl shadow-xl shadow-amber-500/30">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            <span class="inline-block px-3.5 py-1 rounded-full bg-slate-900 text-amber-400 font-extrabold text-xs uppercase tracking-wider mb-2">
+                Mencapai Petak 36 • Finish!
+            </span>
+            <h2 id="winnerTitle" class="text-2xl sm:text-4xl font-extrabold text-slate-900 mb-1">
+                K-01 • Kelompok 1 Menang!
+            </h2>
+            <p class="text-sm text-slate-600 mb-6">
+                Selamat! Rekap skor, posisi petak, dan akurasi seluruh kelompok telah tercatat untuk evaluasi keaktifan kelas.
+            </p>
+
+            <!-- Tabel Peringkat Akhir -->
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 mb-6 text-left">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                        Klasemen Akhir & Akurasi Analisis Vektor
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <button onclick="downloadClassReport('csv')" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors">
+                            <i class="fa-solid fa-file-csv"></i> Unduh CSV Nilai
+                        </button>
+                        <button onclick="downloadClassReport('txt')" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-amber-400 font-bold text-xs flex items-center gap-1.5 transition-colors">
+                            <i class="fa-solid fa-file-lines"></i> Unduh TXT
+                        </button>
+                    </div>
+                </div>
+                <div id="finalStandingsList" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-80 overflow-y-auto pr-1">
+                    <!-- Klasemen di-render JS -->
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button onclick="restartSamePlayers()" class="py-3.5 px-5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-extrabold text-sm shadow-lg transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>Main Lagi (Kelompok Sama)</span>
+                </button>
+                <button onclick="resetToLobby()" class="py-3.5 px-5 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-200 font-bold text-sm transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Ubah Pengaturan Kelas</span>
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ==================== MODAL KUIS ANALISIS VEKTOR (DENGAN TIMER, REBUTAN & FOCUS GUARD) ==================== -->
+    <div id="quizModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl border border-slate-200 animate-pop-in my-auto">
+
+            <!-- Peringatan Anti-Contek Jika Tab Ditinggalkan -->
+            <div id="tabWarningBanner" class="hidden mb-3 p-3 rounded-2xl bg-rose-600 text-white text-xs font-extrabold flex items-center justify-between gap-2 animate-pulse">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-eye text-base"></i>
+                    <span>PERINGATAN FOKUS: Layar kuis sempat ditinggalkan / pindah tab!</span>
+                </div>
+                <span id="tabSwitchCounterBadge" class="px-2 py-0.5 rounded bg-rose-900 font-mono">1x</span>
+            </div>
+
+            <!-- Header Modal Tantangan + Timer -->
+            <div id="modalBanner" class="rounded-2xl p-3.5 mb-4 flex items-center justify-between gap-3 bg-slate-900 text-white">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div id="modalBannerIcon" class="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center text-lg font-bold shrink-0">
+                        <i class="fa-solid fa-atom"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div id="modalEventTitle" class="font-extrabold text-sm sm:text-base text-amber-400 truncate">
+                            Tantangan Petak #5
+                        </div>
+                        <div id="modalEventDesc" class="text-xs text-slate-300">
+                            Jawab benar untuk bertahan, salah mundur 2 langkah!
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <span id="modalTopicBadge" class="hidden sm:inline-block px-2.5 py-1 rounded-lg bg-white/10 text-amber-300 font-bold text-[11px]">
+                        Operator Del
+                    </span>
+                    <div id="modalTimerBox" class="px-3 py-1.5 rounded-xl bg-white/15 border border-white/20 font-mono font-extrabold text-sm text-white flex items-center gap-1.5">
+                        <i class="fa-regular fa-clock text-amber-400"></i>
+                        <span id="modalTimerText">90s</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pertanyaan KaTeX -->
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-4">
+                <div id="modalQuestionText" class="text-sm sm:text-base font-bold text-slate-900 leading-relaxed">
+                    Memuat soal...
+                </div>
+            </div>
+
+            <!-- Opsi Jawaban (Diacak setiap tampil) -->
+            <div id="modalOptionsList" class="grid grid-cols-1 gap-2.5 mb-4">
+                <!-- Opsi A, B, C, D -->
+            </div>
+
+            <!-- Panel Mode Rebutan / Challenge (Muncul jika kelompok aktif SALAH di mode kelas >= 2 kelompok) -->
+            <div id="stealChallengeBox" class="hidden rounded-2xl p-4 mb-4 bg-indigo-50 border-2 border-indigo-300">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <div class="font-extrabold text-xs sm:text-sm text-indigo-950 flex items-center gap-1.5">
+                            <i class="fa-solid fa-hand-sparkles text-indigo-600"></i>
+                            <span>Mode Rebutan / Challenge Kelas!</span>
+                        </div>
+                        <p class="text-xs text-indigo-800 mt-0.5">
+                            Kelompok aktif salah menjawab. Pilih kelompok penantang yang berhasil menjawab benar untuk mendapat bonus <strong>+1 langkah & +75 poin</strong>:
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <select id="stealGroupSelect" class="px-3 py-2 rounded-xl border border-indigo-300 bg-white text-xs font-extrabold text-indigo-950 focus:outline-none">
+                            <!-- Diisi kelompok selain kelompok aktif -->
+                        </select>
+                        <button type="button" onclick="awardStealBonus()" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow transition-colors">
+                            Beri +1 Langkah
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feedback & Pembahasan Singkat -->
+            <div id="modalFeedbackBox" class="hidden rounded-2xl p-4 mb-4 border text-xs sm:text-sm">
+                <div class="font-extrabold mb-1 flex items-center gap-2" id="modalFeedbackTitle"></div>
+                <div class="text-slate-700 leading-relaxed" id="modalFeedbackExp"></div>
+            </div>
+
+            <!-- Tombol Lanjutkan Setelah Menjawab -->
+            <button id="modalContinueBtn" onclick="resolveQuizOutcome()" class="hidden w-full py-3.5 px-5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-extrabold text-sm shadow-lg transition-all flex items-center justify-center gap-2">
+                <span id="modalContinueText">Lanjutkan Pergerakan Pion</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL ATURAN MAIN ==================== -->
+    <div id="rulesModal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-pop-in max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+                <h3 class="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-amber-500"></i> Aturan Main Kelas (10 Kelompok)
+                </h3>
+                <button onclick="closeRulesModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="space-y-3 text-xs sm:text-sm text-slate-600 leading-relaxed">
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <strong class="text-slate-900 block mb-0.5"><i class="fa-solid fa-square text-slate-700 mr-1"></i> 1. Petak Biasa (Papan 6×6 = 36 Petak)</strong>
+                    Menjawab <strong>BENAR</strong> sebelum timer habis: Pion bertahan di petak tersebut (+100 poin).<br>
+                    Menjawab <strong>SALAH / WAKTU HABIS</strong>: Pion terpental mundur <strong>2 langkah</strong>!
+                </div>
+                <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950">
+                    <strong class="block mb-0.5"><i class="fa-solid fa-stairs text-emerald-600 mr-1"></i> 2. 5 Tangga Vektor (Petak 3, 8, 11, 16, 21)</strong>
+                    Jawab <strong>BENAR</strong> untuk memanjat tangga menuju petak lebih tinggi (+150 poin). Jika <strong>SALAH</strong>, pion tetap di kaki tangga.
+                </div>
+                <div class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-950">
+                    <strong class="block mb-0.5"><i class="fa-solid fa-staff-snake text-rose-600 mr-1"></i> 3. 5 Ular Medan (Petak 13, 18, 25, 30, 35)</strong>
+                    Jawab <strong>BENAR</strong> (Penawar Bisa) agar selamat dan bertahan! Jika <strong>SALAH</strong>, pion meluncur turun ke ekor ular.
+                </div>
+                <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-950">
+                    <strong class="block mb-0.5"><i class="fa-solid fa-bolt text-amber-500 mr-1"></i> 4. 3 Petak Bonus Operator Del ∇ (Petak 6, 20, 29)</strong>
+                    Kuis kilat! Jika menjawab <strong>BENAR</strong>, pion langsung melesat maju <strong>+2 langkah ekstra</strong>!
+                </div>
+                <div class="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-950">
+                    <strong class="block mb-0.5"><i class="fa-solid fa-hand-sparkles text-indigo-600 mr-1"></i> 5. Mode Rebutan & Anti-Contek</strong>
+                    Urutan 20 soal dan posisi opsi A–D diacak penuh. Jika kelompok aktif salah menjawab, dosen dapat menunjuk 1 kelompok penantang untuk merebut bonus <strong>+1 langkah</strong>.
+                </div>
+            </div>
+            <button onclick="closeRulesModal()" class="mt-5 w-full py-3 rounded-xl bg-slate-900 text-amber-400 font-bold text-sm">
+                Mengerti, Siap Bermain!
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Rekap Cepat Tengah Permainan -->
+    <div id="quickStatsModal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-pop-in">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+                <h3 class="text-base font-extrabold text-slate-900">Rekap Sementara & Ekspor Nilai</h3>
+                <button onclick="document.getElementById('quickStatsModal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-600 mb-4">Anda dapat mengunduh rekap posisi dan skor 10 kelompok kapan saja selama perkuliahan berlangsung.</p>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <button onclick="downloadClassReport('csv')" class="py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-file-csv"></i> Unduh CSV (.csv)
+                </button>
+                <button onclick="downloadClassReport('txt')" class="py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-file-lines"></i> Unduh Teks (.txt)
+                </button>
+            </div>
+            <button onclick="document.getElementById('quickStatsModal').classList.add('hidden')" class="w-full py-2.5 rounded-xl bg-slate-100 font-bold text-xs text-slate-700">Tutup</button>
+        </div>
+    </div>
+
+    <!-- Modal Konfirmasi Keluar -->
+    <div id="confirmExitModal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center">
+            <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl mx-auto mb-3">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-lg font-extrabold text-slate-900 mb-1">Kembali ke Lobby?</h3>
+            <p class="text-xs text-slate-600 mb-5">Permainan yang sedang berlangsung akan dihentikan.</p>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="document.getElementById('confirmExitModal').classList.add('hidden')" class="py-2.5 rounded-xl bg-slate-100 font-bold text-xs text-slate-700">Batal</button>
+                <button onclick="resetToLobby()" class="py-2.5 rounded-xl bg-slate-900 font-bold text-xs text-amber-400">Ya, Keluar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="w-full text-center py-3 text-xs text-slate-500">
+        Fisika Matematika • Ular Tangga Analisis Vektor (S1 Fisika)
+    </footer>
+
+    <!-- ==================== SCRIPT LOGIKA GAME & 20 SOAL ==================== -->
+    <script>
+        // --- 1. KONFIGURASI PAPAN 6x6 (36 PETAK) ---
+        const BOARD_SIZE = 6;
+        const TOTAL_TILES = 36;
+
+        const LADDERS = {
+            3: { to: 14, name: 'Tangga Gradien Potensial (∇V)' },
+            8: { to: 19, name: 'Tangga Divergensi Fluks (∇·F)' },
+            11: { to: 24, name: 'Tangga Curl Medan (∇×F)' },
+            16: { to: 28, name: 'Tangga Identitas BAC-CAB' },
+            21: { to: 32, name: 'Tangga Teorema Stokes' }
+        };
+
+        const SNAKES = {
+            13: { to: 4, name: 'Ular Medan Non-Konservatif' },
+            18: { to: 7, name: 'Ular Singularity (1/r)' },
+            25: { to: 12, name: 'Ular Fluks Permukaan Bocor' },
+            30: { to: 15, name: 'Ular Lupa Tanda Minus (-∇V)' },
+            35: { to: 22, name: 'Ular Arah Normal Terbalik' }
+        };
+
+        const BONUS_TILES = [6, 20, 29]; // Petak Bonus Operator Del (+2 Langkah Ekstra)
+
+        // 10 Palet Warna Kontras Tinggi untuk Kelompok K-01 s.d. K-10
+        const PLAYER_THEMES = [
+            { code: 'K-01', short: 'K1', name: 'Kelompok 1', bg: '#2563eb', badge: 'bg-blue-600' },
+            { code: 'K-02', short: 'K2', name: 'Kelompok 2', bg: '#dc2626', badge: 'bg-red-600' },
+            { code: 'K-03', short: 'K3', name: 'Kelompok 3', bg: '#059669', badge: 'bg-emerald-600' },
+            { code: 'K-04', short: 'K4', name: 'Kelompok 4', bg: '#7c3aed', badge: 'bg-violet-600' },
+            { code: 'K-05', short: 'K5', name: 'Kelompok 5', bg: '#d97706', badge: 'bg-amber-600' },
+            { code: 'K-06', short: 'K6', name: 'Kelompok 6', bg: '#0891b2', badge: 'bg-cyan-600' },
+            { code: 'K-07', short: 'K7', name: 'Kelompok 7', bg: '#db2777', badge: 'bg-pink-600' },
+            { code: 'K-08', short: 'K8', name: 'Kelompok 8', bg: '#4f46e5', badge: 'bg-indigo-600' },
+            { code: 'K-09', short: 'K9', name: 'Kelompok 9', bg: '#65a30d', badge: 'bg-lime-600' },
+            { code: 'K-10', short: 'K10', name: 'Kelompok 10', bg: '#0f172a', badge: 'bg-slate-900' }
+        ];
+
+        // --- 2. BANK 20 SOAL ANALISIS VEKTOR (S1 FISIKA) ---
+        const VECTOR_QUESTIONS = [
+            {
+                id: 1, topic: 'Aljabar Vektor',
+                question: 'Diketahui $\\mathbf{A} = 2\\hat{i} - 3\\hat{j} + \\hat{k}$ dan $\\mathbf{B} = \\hat{i} + 2\\hat{j} - 2\\hat{k}$. Besar proyeksi skalar vektor $\\mathbf{A}$ pada arah vektor $\\mathbf{B}$ adalah...',
+                options: ['$-2$', '$-\\dfrac{6}{\\sqrt{14}}$', '$\\dfrac{2}{3}$', '$-6$'],
+                answer: 0,
+                explanation: '$\\mathbf{A}\\cdot\\mathbf{B} = 2 - 6 - 2 = -6$ dan $|\\mathbf{B}| = \\sqrt{1+4+4}=3$. Proyeksi skalar $= \\dfrac{-6}{3} = -2$.'
+            },
+            {
+                id: 2, topic: 'Aljabar Vektor',
+                question: 'Partikel bergerak dengan kecepatan $\\mathbf{v} = (3\\hat{i} - \\hat{j})\\text{ m/s}$ dalam medan magnetik $\\mathbf{B} = (2\\hat{j} + 4\\hat{k})\\text{ T}$. Hasil kali silang $\\mathbf{v} \\times \\mathbf{B}$ adalah...',
+                options: ['$-4\\hat{i} - 12\\hat{j} + 6\\hat{k}$', '$4\\hat{i} - 12\\hat{j} + 6\\hat{k}$', '$-4\\hat{i} + 12\\hat{j} + 6\\hat{k}$', '$-4\\hat{i} - 12\\hat{j} - 6\\hat{k}$'],
+                answer: 0,
+                explanation: '$\\mathbf{v}\\times\\mathbf{B} = ((-1)(4)-0)\\hat{i} - (3(4)-0)\\hat{j} + (3(2)-0)\\hat{k} = -4\\hat{i} - 12\\hat{j} + 6\\hat{k}$.'
+            },
+            {
+                id: 3, topic: 'Aljabar Vektor',
+                question: 'Volume paralelepipedum yang dibentuk oleh tiga vektor sisi $\\mathbf{A} = \\hat{i} + 2\\hat{j}$, $\\mathbf{B} = 3\\hat{j} + \\hat{k}$, dan $\\mathbf{C} = 2\\hat{i} + \\hat{k}$ adalah...',
+                options: ['$7$ satuan volume', '$5$ satuan volume', '$3$ satuan volume', '$9$ satuan volume'],
+                answer: 0,
+                explanation: '$V = |\\mathbf{A}\\cdot(\\mathbf{B}\\times\\mathbf{C})| = |1(3-0) - 2(0-2) + 0| = |3 + 4| = 7$ satuan volume.'
+            },
+            {
+                id: 4, topic: 'Identitas Vektor',
+                question: 'Dengan aturan BAC-CAB, bentuk sederhana dari $\\mathbf{A}\\times(\\mathbf{B}\\times\\mathbf{C}) + \\mathbf{B}\\times(\\mathbf{C}\\times\\mathbf{A}) + \\mathbf{C}\\times(\\mathbf{A}\\times\\mathbf{B})$ adalah...',
+                options: ['$\\mathbf{0}$ (Identitas Jacobi)', '$2(\\mathbf{A}\\cdot\\mathbf{B})\\mathbf{C}$', '$(\\mathbf{A}\\times\\mathbf{B})\\cdot\\mathbf{C}$', '$3(\\mathbf{A}+\\mathbf{B}+\\mathbf{C})$'],
+                answer: 0,
+                explanation: 'Penjabaran ketiganya menghasilkan $\\mathbf{B}(\\mathbf{A}\\cdot\\mathbf{C}) - \\mathbf{C}(\\mathbf{A}\\cdot\\mathbf{B}) + \\mathbf{C}(\\mathbf{B}\\cdot\\mathbf{A}) - \\mathbf{A}(\\mathbf{B}\\cdot\\mathbf{C}) + \\mathbf{A}(\\mathbf{C}\\cdot\\mathbf{B}) - \\mathbf{B}(\\mathbf{C}\\cdot\\mathbf{A}) = \\mathbf{0}$.'
+            },
+            {
+                id: 5, topic: 'Operator Del (∇)',
+                question: 'Potensial elektrostatik diberikan oleh $V(x,y,z) = x^2 y + y z^2$. Medan listrik $\\mathbf{E} = -\\nabla V$ pada titik $(1, -2, 1)$ adalah...',
+                options: ['$4\\hat{i} - 2\\hat{j} + 4\\hat{k}$', '$-4\\hat{i} + 2\\hat{j} - 4\\hat{k}$', '$4\\hat{i} + 2\\hat{j} - 4\\hat{k}$', '$-4\\hat{i} - 2\\hat{j} + 4\\hat{k}$'],
+                answer: 0,
+                explanation: '$\\nabla V = (2xy)\\hat{i} + (x^2+z^2)\\hat{j} + (2yz)\\hat{k}$. Di $(1,-2,1)$, $\\nabla V = -4\\hat{i} + 2\\hat{j} - 4\\hat{k}$, maka $\\mathbf{E} = -\\nabla V = 4\\hat{i} - 2\\hat{j} + 4\\hat{k}$.'
+            },
+            {
+                id: 6, topic: 'Operator Del (∇)',
+                question: 'Turunan berarah dari medan skalar $\\phi(x,y,z) = x y^2 + y z^3$ pada titik $(2, -1, 1)$ dalam arah $\\mathbf{a} = \\hat{i} + 2\\hat{j} + 2\\hat{k}$ adalah...',
+                options: ['$-\\dfrac{11}{3}$', '$-11$', '$\\dfrac{7}{3}$', '$-\\dfrac{5}{3}$'],
+                answer: 0,
+                explanation: '$\\nabla\\phi(2,-1,1) = \\hat{i} - 3\\hat{j} - 3\\hat{k}$ dan $\\hat{u}_a = \\frac{1}{3}(\\hat{i}+2\\hat{j}+2\\hat{k})$. Maka $\\nabla\\phi\\cdot\\hat{u}_a = \\frac{1 - 6 - 6}{3} = -\\frac{11}{3}$.'
+            },
+            {
+                id: 7, topic: 'Operator Del (∇)',
+                question: 'Medan kecepatan fluida diberikan oleh $\\mathbf{v}(x,y,z) = (x^2 z)\\hat{i} - (2y^3 z^2)\\hat{j} + (x y^2 z)\\hat{k}$. Nilai divergensi $\\nabla \\cdot \\mathbf{v}$ di titik $(1, -1, 1)$ adalah...',
+                options: ['$-3$', '$5$', '$-5$', '$1$'],
+                answer: 0,
+                explanation: '$\\nabla\\cdot\\mathbf{v} = 2xz - 6y^2 z^2 + xy^2$. Pada $(1,-1,1)$ nilainya $2(1)(1) - 6(1)(1) + 1(1) = -3$.'
+            },
+            {
+                id: 8, topic: 'Operator Del (∇)',
+                question: 'Agar medan magnetik $\\mathbf{B} = (3x + 2y)\\hat{i} + (y - 4z)\\hat{j} + (k z + x)\\hat{k}$ bersifat solenoidal ($\\nabla \\cdot \\mathbf{B} = 0$), nilai konstanta $k$ adalah...',
+                options: ['$-4$', '$4$', '$-3$', '$2$'],
+                answer: 0,
+                explanation: 'Syarat solenoidal $\\nabla\\cdot\\mathbf{B} = 3 + 1 + k = 0 \\Rightarrow k = -4$.'
+            },
+            {
+                id: 9, topic: 'Operator Del (∇)',
+                question: 'Untuk vektor posisi 3D $\\mathbf{r} = x\\hat{i} + y\\hat{j} + z\\hat{k}$, nilai dari $\\nabla \\cdot \\mathbf{r}$ dan $\\nabla \\times \\mathbf{r}$ berturut-turut adalah...',
+                options: ['$3$ dan $\\mathbf{0}$', '$1$ dan $\\mathbf{0}$', '$3$ dan $\\hat{r}$', '$0$ dan $3\\mathbf{r}$'],
+                answer: 0,
+                explanation: '$\\nabla\\cdot\\mathbf{r} = \\frac{\\partial x}{\\partial x}+\\frac{\\partial y}{\\partial y}+\\frac{\\partial z}{\\partial z} = 3$, sedangkan $\\nabla\\times\\mathbf{r} = \\mathbf{0}$ (irotasional).'
+            },
+            {
+                id: 10, topic: 'Identitas Vektor',
+                question: 'Identitas kalkulus vektor yang tepat untuk divergensi perkalian skalar dan vektor $\\nabla \\cdot (\\phi \\mathbf{A})$ adalah...',
+                options: ['$\\phi (\\nabla \\cdot \\mathbf{A}) + \\mathbf{A} \\cdot (\\nabla \\phi)$', '$\\phi (\\nabla \\times \\mathbf{A}) + (\\nabla \\phi) \\times \\mathbf{A}$', '$\\phi (\\nabla \\cdot \\mathbf{A}) - \\mathbf{A} \\cdot (\\nabla \\phi)$', '$(\\nabla \\phi)(\\nabla \\cdot \\mathbf{A})$'],
+                answer: 0,
+                explanation: 'Dengan aturan perkalian turunan parsial: $\\nabla\\cdot(\\phi\\mathbf{A}) = \\phi(\\nabla\\cdot\\mathbf{A}) + \\mathbf{A}\\cdot(\\nabla\\phi)$.'
+            },
+            {
+                id: 11, topic: 'Identitas Vektor',
+                question: 'Dalam penurunan persamaan gelombang elektromagnetik Maxwell, identitas vektor $\\nabla \\times (\\nabla \\times \\mathbf{E})$ sama dengan...',
+                options: ['$\\nabla(\\nabla \\cdot \\mathbf{E}) - \\nabla^2 \\mathbf{E}$', '$\\nabla^2 \\mathbf{E} - \\nabla(\\nabla \\cdot \\mathbf{E})$', '$\\nabla(\\nabla \\times \\mathbf{E}) + \\nabla^2 \\mathbf{E}$', '$\\mathbf{0}$ untuk semua medan vektor'],
+                answer: 0,
+                explanation: 'Identitas curl dari curl: $\\nabla\\times(\\nabla\\times\\mathbf{E}) = \\nabla(\\nabla\\cdot\\mathbf{E}) - \\nabla^2\\mathbf{E}$.'
+            },
+            {
+                id: 12, topic: 'Identitas Vektor',
+                question: 'Untuk $r = |\\mathbf{r}| \\neq 0$, nilai Laplacian dari fungsi potensial Coulomb $\\nabla^2 \\left(\\dfrac{1}{r}\\right)$ adalah...',
+                options: ['$0$', '$-\\dfrac{1}{r^3}$', '$\\dfrac{2}{r^3}$', '$-\\dfrac{2}{r^2}$'],
+                answer: 0,
+                explanation: '$\\nabla^2(1/r) = \\nabla\\cdot(-\\mathbf{r}/r^3) = -3/r^3 + 3r^2/r^5 = 0$ untuk $r \\neq 0$ (Persamaan Laplace).'
+            },
+            {
+                id: 13, topic: 'Integral Garis & Fluks',
+                question: 'Medan gaya $\\mathbf{F} = (2xy + z^3)\\hat{i} + (x^2 + 2y)\\hat{j} + (3xz^2)\\hat{k}$ memiliki sifat fisis...',
+                options: ['Konservatif karena $\\nabla \\times \\mathbf{F} = \\mathbf{0}$', 'Non-konservatif karena $\\nabla \\cdot \\mathbf{F} \\neq 0$', 'Usaha bergantung bentuk lintasan', 'Solenoidal karena $\\nabla \\times \\mathbf{F} = \\mathbf{0}$'],
+                answer: 0,
+                explanation: 'Seluruh komponen $\\nabla\\times\\mathbf{F}$ bernilai nol, sehingga $\\mathbf{F}$ adalah medan gaya konservatif.'
+            },
+            {
+                id: 14, topic: 'Integral Garis & Fluks',
+                question: 'Usaha $W = \\int_C \\mathbf{F} \\cdot d\\mathbf{r}$ oleh medan $\\mathbf{F} = y\\hat{i} + x\\hat{j}$ sepanjang kurva $y = x^2$ dari $(0,0)$ ke $(2,4)$ adalah...',
+                options: ['$8$', '$4$', '$12$', '$16$'],
+                answer: 0,
+                explanation: '$\\mathbf{F} = \\nabla(xy)$, sehingga $W = [xy]_{(0,0)}^{(2,4)} = (2)(4) - 0 = 8$.'
+            },
+            {
+                id: 15, topic: 'Integral Garis & Fluks',
+                question: 'Medan vektor seragam $\\mathbf{E} = 4\\hat{i} + 3\\hat{j} - 2\\hat{k}$ menembus bidang seluas $A = 5\\text{ m}^2$ dengan normal $\\hat{n} = +\\hat{k}$. Fluks $\\Phi_E$ yang menembus bidang adalah...',
+                options: ['$-10$', '$10$', '$20$', '$-2$'],
+                answer: 0,
+                explanation: '$\\Phi_E = (\\mathbf{E}\\cdot\\hat{k})A = (-2)(5) = -10$.'
+            },
+            {
+                id: 16, topic: 'Integral Garis & Fluks',
+                question: 'Nilai integral permukaan tertutup $\\oiint_S \\mathbf{r} \\cdot d\\mathbf{S}$ di mana $S$ adalah permukaan bola berjari-jari $R$ berpusat di titik asal adalah...',
+                options: ['$4\\pi R^3$', '$\\dfrac{4}{3}\\pi R^3$', '$4\\pi R^2$', '$3\\pi R^3$'],
+                answer: 0,
+                explanation: 'Pada bola $\\mathbf{r}\\cdot\\hat{n} = R$, sehingga $\\oiint_S R\\,dS = R(4\\pi R^2) = 4\\pi R^3$.'
+            },
+            {
+                id: 17, topic: 'Teorema Integral',
+                question: 'Dengan Teorema Green, nilai $\\oint_C (-y\\,dx + x\\,dy)$ mengelilingi lingkaran berjari-jari $R = 3$ berlawanan arah jarum jam adalah...',
+                options: ['$18\\pi$', '$9\\pi$', '$6\\pi$', '$0$'],
+                answer: 0,
+                explanation: '$\\iint_D (\\frac{\\partial x}{\\partial x} - \\frac{\\partial(-y)}{\\partial y})\\,dA = \\iint_D 2\\,dA = 2(\\pi\\cdot 3^2) = 18\\pi$.'
+            },
+            {
+                id: 18, topic: 'Teorema Integral',
+                question: 'Dengan Teorema Divergensi Gauss, fluks $\\mathbf{F} = 2x\\hat{i} + 3y\\hat{j} + 4z\\hat{k}$ keluar dari kubus satuan $0 \\le x,y,z \\le 1$ adalah...',
+                options: ['$9$', '$24$', '$3$', '$6$'],
+                answer: 0,
+                explanation: '$\\nabla\\cdot\\mathbf{F} = 2 + 3 + 4 = 9$. Karena volume kubus $V=1$, maka fluks $= 9 \\times 1 = 9$.'
+            },
+            {
+                id: 19, topic: 'Teorema Integral',
+                question: 'Bentuk integral Hukum Gauss elektrostatik yang diperoleh dari $\\nabla \\cdot \\mathbf{E} = \\dfrac{\\rho}{\\varepsilon_0}$ via Teorema Divergensi adalah...',
+                options: ['$\\oiint_S \\mathbf{E} \\cdot d\\mathbf{S} = \\dfrac{Q_{\\text{lingkup}}}{\\varepsilon_0}$', '$\\oint_C \\mathbf{E} \\cdot d\\mathbf{l} = -\\dfrac{d\\Phi_B}{dt}$', '$\\oiint_S (\\nabla\\times\\mathbf{E})\\cdot d\\mathbf{S} = \\dfrac{Q_{\\text{lingkup}}}{\\varepsilon_0}$', '$\\iiint_V \\mathbf{E}\\,dV = \\dfrac{\\rho}{\\varepsilon_0}$'],
+                answer: 0,
+                explanation: '$\\iiint_V (\\nabla\\cdot\\mathbf{E})\\,dV = \\oiint_S \\mathbf{E}\\cdot d\\mathbf{S} = \\frac{1}{\\varepsilon_0}\\iiint_V \\rho\\,dV = \\frac{Q_{\\text{lingkup}}}{\\varepsilon_0}$.'
+            },
+            {
+                id: 20, topic: 'Teorema Integral',
+                question: 'Menurut Teorema Stokes, sirkulasi $\\mathbf{F} = -y\\hat{i} + x\\hat{j} + z^2\\hat{k}$ mengelilingi lingkaran $C$ pada $z=2$ berjari-jari $R=1$ (normal $+\\hat{k}$) adalah...',
+                options: ['$2\\pi$', '$4\\pi$', '$\\pi$', '$0$'],
+                answer: 0,
+                explanation: '$\\nabla\\times\\mathbf{F} = 2\\hat{k}$. Sirkulasi $= \\iint_S (2\\hat{k})\\cdot\\hat{k}\\,dS = 2(\\pi\\cdot 1^2) = 2\\pi$.'
+            }
+        ];
+
+        // --- 3. STATE PERMAINAN ---
+        let state = {
+            mode: 'multi', // 'multi' (2-10 kelompok) | 'ai'
+            playerCount: 10,
+            sessionSeed: 'VEC-' + Math.floor(1000 + Math.random() * 9000),
+            timerSetting: 90,
+            players: [],
+            currentPlayerIdx: 0,
+            isBusy: false,
+            soundEnabled: true,
+            questionDeck: [],
+            activeQuizContext: null,
+            quizTimerInterval: null,
+            quizTimeLeft: 0,
+            quizAnswered: false,
+            tabSwitchesInTurn: 0
+        };
+
+        // --- 4. AUDIO SYNTHESIZER (WEB AUDIO API) ---
+        const SoundFX = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AC();
+                }
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            },
+            tone(freq, type, dur, delay = 0, vol = 0.14) {
+                if (!state.soundEnabled) return;
+                try {
+                    this.init();
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + delay);
+                    gain.gain.setValueAtTime(vol, this.ctx.currentTime + delay);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + delay + dur);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + delay);
+                    osc.stop(this.ctx.currentTime + delay + dur);
+                } catch (e) {}
+            },
+            dice() {
+                for (let i = 0; i < 5; i++) {
+                    this.tone(250 + Math.random() * 250, 'triangle', 0.06, i * 0.09, 0.12);
+                }
+            },
+            hop() {
+                this.tone(480, 'sine', 0.08, 0, 0.11);
+            },
+            ladder() {
+                [440, 554, 659, 880].forEach((f, i) => this.tone(f, 'triangle', 0.18, i * 0.1, 0.16));
+            },
+            snake() {
+                [440, 370, 311, 220].forEach((f, i) => this.tone(f, 'sawtooth', 0.2, i * 0.11, 0.12));
+            },
+            correct() {
+                this.tone(523.25, 'triangle', 0.14, 0, 0.15);
+                this.tone(659.25, 'triangle', 0.22, 0.09, 0.16);
+            },
+            wrong() {
+                this.tone(200, 'sawtooth', 0.25, 0, 0.12);
+            },
+            tick() {
+                this.tone(880, 'sine', 0.05, 0, 0.08);
+            },
+            warning() {
+                this.tone(300, 'square', 0.15, 0, 0.14);
+                this.tone(240, 'square', 0.2, 0.14, 0.14);
+            },
+            win() {
+                [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => this.tone(f, 'triangle', 0.3, i * 0.12, 0.2));
+            }
+        };
+
+        function renderMath(el = document.body) {
+            if (typeof renderMathInElement === 'function') {
+                renderMathInElement(el, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false }
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+
+        // --- 5. DETEKSI ANTI-CONTEK (TAB SWITCH / FOCUS GUARD) ---
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && !document.getElementById('quizModal').classList.contains('hidden') && !state.quizAnswered) {
+                state.tabSwitchesInTurn++;
+                SoundFX.warning();
+                const banner = document.getElementById('tabWarningBanner');
+                const badge = document.getElementById('tabSwitchCounterBadge');
+                banner.classList.remove('hidden');
+                badge.textContent = `${state.tabSwitchesInTurn}x Pindah Tab`;
+
+                const activeP = state.players[state.currentPlayerIdx];
+                if (activeP) {
+                    activeP.tabWarnings = (activeP.tabWarnings || 0) + 1;
+                    addLog(`👁️ <strong>Peringatan Fokus:</strong> Layar ditinggalkan saat giliran <strong>${activeP.code} (${activeP.name})</strong>!`, 'bg-rose-50 border-rose-300 text-rose-800 font-bold');
+                }
+            }
+        });
+
+        // --- 6. LOBBY & PENGATURAN 10 KELOMPOK ---
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('sessionSeedDisplay').textContent = state.sessionSeed;
+            renderCountButtons();
+            renderLobbyInputs();
+            setTimeout(() => renderMath(document.body), 150);
+        });
+
+        function regenerateSessionSeed() {
+            state.sessionSeed = 'VEC-' + Math.floor(1000 + Math.random() * 9000);
+            document.getElementById('sessionSeedDisplay').textContent = state.sessionSeed;
+        }
+
+        function toggleSound() {
+            state.soundEnabled = !state.soundEnabled;
+            document.getElementById('soundIcon').className = state.soundEnabled
+                ? 'fa-solid fa-volume-high'
+                : 'fa-solid fa-volume-xmark text-slate-500';
+        }
+
+        function renderCountButtons() {
+            const grid = document.getElementById('countButtonsGrid');
+            grid.innerHTML = '';
+            for (let c = 2; c <= 10; c++) {
+                const active = c === state.playerCount;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.dataset.count = c;
+                btn.onclick = () => setPlayerCount(c);
+                btn.className = active
+                    ? 'count-btn py-2 px-1 rounded-xl border-2 border-amber-500 bg-amber-50 font-extrabold text-xs sm:text-sm text-slate-900 shadow-sm'
+                    : 'count-btn py-2 px-1 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-400 font-bold text-xs sm:text-sm text-slate-700';
+                btn.textContent = `${c}`;
+                grid.appendChild(btn);
+            }
+        }
+
+        function setGameMode(mode) {
+            state.mode = mode;
+            const aiBtn = document.getElementById('modeAiBtn');
+            const multiBtn = document.getElementById('modeMultiBtn');
+            const countWrap = document.getElementById('playerCountWrapper');
+
+            if (mode === 'ai') {
+                aiBtn.className = 'p-4 rounded-2xl border-2 border-slate-900 bg-slate-900 text-white text-left transition-all flex items-start gap-3.5 shadow-md';
+                aiBtn.querySelector('div:first-child').className = 'w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 font-bold text-lg';
+                aiBtn.querySelector('p').className = 'text-xs text-slate-300 mt-0.5';
+
+                multiBtn.className = 'p-4 rounded-2xl border-2 border-slate-200 bg-white hover:border-slate-400 text-slate-800 text-left transition-all flex items-start gap-3.5';
+                multiBtn.querySelector('div:first-child').className = 'w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 font-bold text-lg';
+                multiBtn.querySelector('p').className = 'text-xs text-slate-500 mt-0.5';
+
+                countWrap.classList.add('opacity-40', 'pointer-events-none');
+                document.getElementById('activeGroupCountLabel').textContent = '1P vs AI';
+            } else {
+                multiBtn.className = 'p-4 rounded-2xl border-2 border-slate-900 bg-slate-900 text-white text-left transition-all flex items-start gap-3.5 shadow-md';
+                multiBtn.querySelector('div:first-child').className = 'w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 font-bold text-lg';
+                multiBtn.querySelector('p').className = 'text-xs text-slate-300 mt-0.5';
+
+                aiBtn.className = 'p-4 rounded-2xl border-2 border-slate-200 bg-white hover:border-slate-400 text-slate-800 text-left transition-all flex items-start gap-3.5';
+                aiBtn.querySelector('div:first-child').className = 'w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 font-bold text-lg';
+                aiBtn.querySelector('p').className = 'text-xs text-slate-500 mt-0.5';
+
+                countWrap.classList.remove('opacity-40', 'pointer-events-none');
+                document.getElementById('activeGroupCountLabel').textContent = `${state.playerCount} Kelompok Aktif`;
+            }
+            renderLobbyInputs();
+        }
+
+        function setPlayerCount(count) {
+            state.playerCount = count;
+            document.getElementById('activeGroupCountLabel').textContent = `${count} Kelompok Aktif`;
+            renderCountButtons();
+            renderLobbyInputs();
+        }
+
+        function renderLobbyInputs() {
+            const grid = document.getElementById('playerInputsGrid');
+            grid.innerHTML = '';
+
+            if (state.mode === 'ai') {
+                grid.innerHTML = `
+                    <div class="flex items-center gap-2.5 p-2.5 rounded-2xl border border-slate-200 bg-slate-50 sm:col-span-2">
+                        <span class="w-8 h-8 rounded-full bg-blue-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0">K1</span>
+                        <input type="text" id="pName-0" value="Mahasiswa Fisika" placeholder="Nama Mahasiswa" class="w-full bg-white px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:outline-none focus:border-slate-900">
+                    </div>
+                    <div class="flex items-center gap-2.5 p-2.5 rounded-2xl border border-amber-200 bg-amber-50/70 sm:col-span-2">
+                        <span class="w-8 h-8 rounded-full bg-red-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0"><i class="fa-solid fa-robot"></i></span>
+                        <input type="text" id="pName-1" value="Prof. Gauss (AI)" readonly class="w-full bg-white/80 px-3 py-1.5 rounded-xl border border-amber-200 text-xs font-bold text-slate-700 cursor-not-allowed">
+                    </div>
+                `;
+            } else {
+                for (let i = 0; i < state.playerCount; i++) {
+                    const theme = PLAYER_THEMES[i];
+                    grid.innerHTML += `
+                        <div class="flex items-center gap-2 p-2 rounded-2xl border border-slate-200 bg-slate-50">
+                            <span class="w-7 h-7 rounded-full ${theme.badge} text-white font-extrabold text-[10px] flex items-center justify-center shrink-0">${theme.short}</span>
+                            <input type="text" id="pName-${i}" value="${theme.name}" placeholder="Nama ${theme.code}" class="w-full bg-white px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:outline-none focus:border-slate-900">
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // --- 7. KOORDINAT PAPAN 6x6 ZIG-ZAG (BOUSTROPHEDON) ---
+        // Petak 1 di kiri bawah (row 5, col 0), naik zig-zag hingga Petak 36 di kiri atas (row 0, col 0)
+        function getTileGridCoords(tileNum) {
+            const idx = tileNum - 1; // 0..35
+            const rowFromBottom = Math.floor(idx / BOARD_SIZE); // 0..5
+            const row = (BOARD_SIZE - 1) - rowFromBottom; // 5 (bawah) .. 0 (atas)
+            let col = idx % BOARD_SIZE;
+            if (rowFromBottom % 2 === 1) {
+                col = (BOARD_SIZE - 1) - col; // Baris ganjil dari bawah berjalan dari kanan ke kiri
+            }
+            return { row, col };
+        }
+
+        // Mendapatkan titik tengah petak dalam persentase (0..100%) dan skala SVG (0..600)
+        function getTileCenterPercent(tileNum) {
+            const { row, col } = getTileGridCoords(tileNum);
+            const cellPct = 100 / BOARD_SIZE;
+            return {
+                xPct: (col + 0.5) * cellPct,
+                yPct: (row + 0.5) * cellPct,
+                svgX: (col + 0.5) * 100,
+                svgY: (row + 0.5) * 100
+            };
+        }
+
+        // --- 8. MEMBANGUN PAPAN 6x6 & MENGGAMBAR 5 ULAR + 5 TANGGA VIA SVG ---
+        function buildBoardVisuals() {
+            const grid = document.getElementById('boardGrid');
+            grid.innerHTML = '';
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const rowFromBottom = (BOARD_SIZE - 1) - r;
+                    const colInRow = (rowFromBottom % 2 === 1) ? ((BOARD_SIZE - 1) - c) : c;
+                    const tileNum = rowFromBottom * BOARD_SIZE + colInRow + 1;
+
+                    const cell = document.createElement('div');
+                    let bgClass = (r + c) % 2 === 0 ? 'bg-white' : 'bg-slate-100/90';
+                    let badgeHtml = '';
+
+                    if (tileNum === 1) {
+                        bgClass = 'bg-sky-100';
+                        badgeHtml = '<span class="text-[8px] sm:text-[9px] font-extrabold px-1 py-0.5 rounded bg-sky-600 text-white uppercase">START</span>';
+                    } else if (tileNum === TOTAL_TILES) {
+                        bgClass = 'bg-amber-100';
+                        badgeHtml = '<span class="text-[8px] sm:text-[9px] font-extrabold px-1 py-0.5 rounded bg-amber-500 text-slate-950 uppercase"><i class="fa-solid fa-flag-checkered"></i> FIN</span>';
+                    } else if (LADDERS[tileNum]) {
+                        bgClass = 'bg-emerald-50';
+                        badgeHtml = `<span class="text-[8px] sm:text-[9px] font-extrabold text-emerald-700 flex items-center gap-0.5"><i class="fa-solid fa-stairs"></i>→${LADDERS[tileNum].to}</span>`;
+                    } else if (SNAKES[tileNum]) {
+                        bgClass = 'bg-rose-50';
+                        badgeHtml = `<span class="text-[8px] sm:text-[9px] font-extrabold text-rose-700 flex items-center gap-0.5"><i class="fa-solid fa-staff-snake"></i>→${SNAKES[tileNum].to}</span>`;
+                    } else if (BONUS_TILES.includes(tileNum)) {
+                        bgClass = 'bg-amber-50';
+                        badgeHtml = '<span class="text-[9px] sm:text-[10px] font-extrabold text-amber-600"><i class="fa-solid fa-bolt"></i>+2</span>';
+                    }
+
+                    cell.className = `relative border border-slate-300/80 p-1 flex flex-col justify-between ${bgClass}`;
+                    cell.innerHTML = `
+                        <div class="flex items-center justify-between leading-none">
+                            <span class="font-mono font-extrabold text-[11px] sm:text-xs ${tileNum === TOTAL_TILES ? 'text-amber-700' : 'text-slate-700'}">${tileNum}</span>
+                            ${badgeHtml}
+                        </div>
+                    `;
+                    grid.appendChild(cell);
+                }
+            }
+
+            drawSnakesAndLaddersSVG();
+        }
+
+        function drawSnakesAndLaddersSVG() {
+            const svg = document.getElementById('boardSvgOverlay');
+            svg.innerHTML = '';
+
+            // 1. Gambar 5 Tangga Vektor
+            Object.entries(LADDERS).forEach(([fromStr, info]) => {
+                const start = getTileCenterPercent(parseInt(fromStr, 10));
+                const end = getTileCenterPercent(info.to);
+
+                const dx = end.svgX - start.svgX;
+                const dy = end.svgY - start.svgY;
+                const len = Math.hypot(dx, dy);
+                const ux = dx / len;
+                const uy = dy / len;
+                const px = -uy * 10;
+                const py = ux * 10;
+
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('opacity', '0.88');
+
+                const rail1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                rail1.setAttribute('x1', start.svgX + px);
+                rail1.setAttribute('y1', start.svgY + py);
+                rail1.setAttribute('x2', end.svgX + px);
+                rail1.setAttribute('y2', end.svgY + py);
+                rail1.setAttribute('stroke', '#b45309');
+                rail1.setAttribute('stroke-width', '4.5');
+                rail1.setAttribute('stroke-linecap', 'round');
+
+                const rail2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                rail2.setAttribute('x1', start.svgX - px);
+                rail2.setAttribute('y1', start.svgY - py);
+                rail2.setAttribute('x2', end.svgX - px);
+                rail2.setAttribute('y2', end.svgY - py);
+                rail2.setAttribute('stroke', '#d97706');
+                rail2.setAttribute('stroke-width', '4.5');
+                rail2.setAttribute('stroke-linecap', 'round');
+
+                g.appendChild(rail1);
+                g.appendChild(rail2);
+
+                const steps = Math.floor(len / 22);
+                for (let s = 1; s < steps; s++) {
+                    const t = s / steps;
+                    const cx = start.svgX + dx * t;
+                    const cy = start.svgY + dy * t;
+                    const rung = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    rung.setAttribute('x1', cx + px);
+                    rung.setAttribute('y1', cy + py);
+                    rung.setAttribute('x2', cx - px);
+                    rung.setAttribute('y2', cy - py);
+                    rung.setAttribute('stroke', '#f59e0b');
+                    rung.setAttribute('stroke-width', '3.5');
+                    rung.setAttribute('stroke-linecap', 'round');
+                    g.appendChild(rung);
+                }
+
+                svg.appendChild(g);
+            });
+
+            // 2. Gambar 5 Ular Medan
+            const snakeColors = ['#e11d48', '#9333ea', '#ea580c', '#be123c', '#0f766e'];
+            Object.entries(SNAKES).forEach(([headStr, info], idx) => {
+                const head = getTileCenterPercent(parseInt(headStr, 10));
+                const tail = getTileCenterPercent(info.to);
+                const color = snakeColors[idx % snakeColors.length];
+
+                const dx = tail.svgX - head.svgX;
+                const dy = tail.svgY - head.svgY;
+                const len = Math.hypot(dx, dy);
+                const nx = -dy / len;
+                const ny = dx / len;
+
+                const c1x = head.svgX + dx * 0.33 + nx * 32;
+                const c1y = head.svgY + dy * 0.33 + ny * 32;
+                const c2x = head.svgX + dx * 0.66 - nx * 32;
+                const c2y = head.svgY + dy * 0.66 - ny * 32;
+
+                const dPath = `M ${head.svgX} ${head.svgY} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tail.svgX} ${tail.svgY}`;
+
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('opacity', '0.86');
+
+                const bodyOutline = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                bodyOutline.setAttribute('d', dPath);
+                bodyOutline.setAttribute('fill', 'none');
+                bodyOutline.setAttribute('stroke', '#ffffff');
+                bodyOutline.setAttribute('stroke-width', '11');
+                bodyOutline.setAttribute('stroke-linecap', 'round');
+
+                const body = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                body.setAttribute('d', dPath);
+                body.setAttribute('fill', 'none');
+                body.setAttribute('stroke', color);
+                body.setAttribute('stroke-width', '7.5');
+                body.setAttribute('stroke-linecap', 'round');
+
+                const stripe = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                stripe.setAttribute('d', dPath);
+                stripe.setAttribute('fill', 'none');
+                stripe.setAttribute('stroke', '#fde047');
+                stripe.setAttribute('stroke-width', '2.5');
+                stripe.setAttribute('stroke-dasharray', '5 9');
+                stripe.setAttribute('stroke-linecap', 'round');
+
+                const headCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                headCircle.setAttribute('cx', head.svgX);
+                headCircle.setAttribute('cy', head.svgY);
+                headCircle.setAttribute('r', '9');
+                headCircle.setAttribute('fill', color);
+                headCircle.setAttribute('stroke', '#ffffff');
+                headCircle.setAttribute('stroke-width', '2');
+
+                const eye1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                eye1.setAttribute('cx', head.svgX - 3);
+                eye1.setAttribute('cy', head.svgY - 2);
+                eye1.setAttribute('r', '1.8');
+                eye1.setAttribute('fill', '#ffffff');
+
+                const eye2 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                eye2.setAttribute('cx', head.svgX + 3);
+                eye2.setAttribute('cy', head.svgY - 2);
+                eye2.setAttribute('r', '1.8');
+                eye2.setAttribute('fill', '#ffffff');
+
+                g.appendChild(bodyOutline);
+                g.appendChild(body);
+                g.appendChild(stripe);
+                g.appendChild(headCircle);
+                g.appendChild(eye1);
+                g.appendChild(eye2);
+                svg.appendChild(g);
+            });
+        }
+
+        // --- 9. FISHER-YATES SHUFFLE PENUH (SOAL & OPSI JAWABAN) ---
+        function fisherYatesShuffle(arr) {
+            const copy = [...arr];
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        }
+
+        function drawQuestionFromDeck() {
+            if (state.questionDeck.length === 0) {
+                state.questionDeck = fisherYatesShuffle(VECTOR_QUESTIONS);
+                addLog('🔄 Semua 20 soal telah muncul — dek soal diacak ulang dengan Fisher-Yates Shuffle.', 'text-slate-500 italic');
+            }
+            const rawQ = state.questionDeck.pop();
+            updateDeckBadge();
+
+            // Acak urutan opsi A, B, C, D secara independen
+            const indexedOptions = rawQ.options.map((text, idx) => ({
+                text,
+                isCorrect: idx === rawQ.answer
+            }));
+            const shuffledIndexed = fisherYatesShuffle(indexedOptions);
+
+            return {
+                ...rawQ,
+                options: shuffledIndexed.map(o => o.text),
+                answer: shuffledIndexed.findIndex(o => o.isCorrect)
+            };
+        }
+
+        function updateDeckBadge() {
+            const el = document.getElementById('deckRemainingBadge');
+            if (el) {
+                el.textContent = `Sisa Dek Soal: ${state.questionDeck.length}/${VECTOR_QUESTIONS.length}`;
+            }
+        }
+
+        // --- 10. MEMULAI PERMAINAN & SMART MICRO-GRID PION (10 KELOMPOK) ---
+        function startBoardGame() {
+            const count = state.mode === 'ai' ? 2 : state.playerCount;
+            state.timerSetting = parseInt(document.getElementById('timerDurationSelect').value, 10);
+            state.players = [];
+
+            for (let i = 0; i < count; i++) {
+                const inputEl = document.getElementById(`pName-${i}`);
+                const theme = PLAYER_THEMES[i];
+                const customName = inputEl && inputEl.value.trim() ? inputEl.value.trim() : theme.name;
+                state.players.push({
+                    id: i,
+                    code: state.mode === 'ai' && i === 1 ? 'AI' : theme.code,
+                    short: state.mode === 'ai' && i === 1 ? 'AI' : theme.short,
+                    name: customName,
+                    isAI: state.mode === 'ai' && i === 1,
+                    theme: theme,
+                    position: 1,
+                    score: 0,
+                    correct: 0,
+                    wrong: 0,
+                    steals: 0,
+                    tabWarnings: 0
+                });
+            }
+
+            state.currentPlayerIdx = 0;
+            state.isBusy = false;
+            state.questionDeck = fisherYatesShuffle(VECTOR_QUESTIONS);
+
+            document.getElementById('boardSessionBadge').textContent = `SESI: ${state.sessionSeed}`;
+            document.getElementById('lobbyScreen').classList.add('hidden');
+            document.getElementById('victoryScreen').classList.add('hidden');
+            document.getElementById('boardScreen').classList.remove('hidden');
+
+            buildBoardVisuals();
+            renderTokens(false);
+            updateSidebarUI();
+            updateDeckBadge();
+
+            const logEl = document.getElementById('activityLog');
+            logEl.innerHTML = '';
+            addLog(`Sesi <strong>${state.sessionSeed}</strong> dimulai (${count} peserta)! Giliran pertama: <strong>${state.players[0].code} • ${state.players[0].name}</strong>.`, 'text-slate-900 font-bold');
+        }
+
+        // Menyusun pion dalam micro-grid otomatis di dalam petak yang sama agar K1..K10 tidak tumpang tindih
+        function renderTokens(isSliding = false) {
+            const layer = document.getElementById('tokensLayer');
+            if (layer.children.length !== state.players.length) {
+                layer.innerHTML = '';
+                state.players.forEach((p, idx) => {
+                    const el = document.createElement('div');
+                    el.id = `token-${idx}`;
+                    el.className = 'player-token';
+                    el.style.backgroundColor = p.theme.bg;
+                    el.innerHTML = p.isAI ? '<i class="fa-solid fa-robot text-[9px]"></i>' : p.short;
+                    layer.appendChild(el);
+                });
+            }
+
+            // Kelompokkan pemain berdasarkan nomor petak saat ini
+            const tileOccupants = {};
+            state.players.forEach((p, idx) => {
+                if (!tileOccupants[p.position]) tileOccupants[p.position] = [];
+                tileOccupants[p.position].push(idx);
+            });
+
+            const tokenHalf = window.innerWidth >= 640 ? 13.5 : 12;
+
+            state.players.forEach((p, idx) => {
+                const el = document.getElementById(`token-${idx}`);
+                const center = getTileCenterPercent(p.position);
+                const occupants = tileOccupants[p.position];
+                const slot = occupants.indexOf(idx);
+                const totalInTile = occupants.length;
+
+                let dx = 0;
+                let dy = 3; // Sedikit turun agar angka pojok kiri atas petak tetap terlihat
+
+                if (totalInTile > 1) {
+                    const cols = totalInTile <= 4 ? 2 : (totalInTile <= 6 ? 3 : 4);
+                    const rows = Math.ceil(totalInTile / cols);
+                    const rIdx = Math.floor(slot / cols);
+                    const cIdx = slot % cols;
+
+                    const spacingX = totalInTile <= 4 ? 17 : 13;
+                    const spacingY = rows <= 2 ? 15 : 12;
+
+                    dx = (cIdx - (cols - 1) / 2) * spacingX;
+                    dy = 4 + (rIdx - (rows - 1) / 2) * spacingY;
+                }
+
+                if (isSliding) el.classList.add('sliding');
+                else el.classList.remove('sliding');
+
+                if (idx === state.currentPlayerIdx) el.classList.add('active-turn');
+                else el.classList.remove('active-turn');
+
+                el.style.left = `calc(${center.xPct}% + ${dx}px - ${tokenHalf}px)`;
+                el.style.top = `calc(${center.yPct}% + ${dy}px - ${tokenHalf}px)`;
+            });
+        }
+
+        function updateSidebarUI() {
+            const activeP = state.players[state.currentPlayerIdx];
+            document.getElementById('turnColorDot').style.backgroundColor = activeP.theme.bg;
+            document.getElementById('turnCodeBadge').textContent = activeP.code;
+            document.getElementById('turnPlayerName').textContent = activeP.name;
+
+            const rollBtn = document.getElementById('rollDiceBtn');
+            if (activeP.isAI) {
+                document.getElementById('turnStatusText').textContent = 'Prof. Gauss (AI) sedang menganalisis vektor...';
+                rollBtn.disabled = true;
+            } else {
+                document.getElementById('turnStatusText').innerHTML = 'Klik dadu atau tekan <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px]">Spasi</kbd> untuk melempar!';
+                rollBtn.disabled = state.isBusy;
+            }
+
+            const list = document.getElementById('scoreboardList');
+            list.innerHTML = '';
+            state.players.forEach((p, idx) => {
+                const isTurn = idx === state.currentPlayerIdx;
+                const warnHtml = p.tabWarnings > 0
+                    ? `<span class="ml-1 px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 font-bold text-[10px]" title="Peringatan pindah tab"><i class="fa-solid fa-eye"></i> ${p.tabWarnings}</span>`
+                    : '';
+
+                list.innerHTML += `
+                    <div class="p-2.5 rounded-2xl border ${isTurn ? 'border-slate-900 bg-amber-50/50 shadow-sm ring-1 ring-slate-900/10' : 'border-slate-200 bg-white'} flex items-center justify-between gap-2 transition-all">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="w-7 h-7 rounded-full ${p.theme.badge} text-white font-extrabold text-[10px] flex items-center justify-center shrink-0">
+                                ${p.isAI ? '<i class="fa-solid fa-robot text-[10px]"></i>' : p.short}
+                            </span>
+                            <div class="truncate">
+                                <div class="font-bold text-xs text-slate-900 truncate flex items-center">
+                                    <span>${p.name}</span>
+                                    ${isTurn ? '<span class="ml-1.5 px-1.5 py-0.2 rounded bg-amber-400 text-slate-950 font-extrabold text-[9px] uppercase">Giliran</span>' : ''}
+                                    ${warnHtml}
+                                </div>
+                                <div class="text-[10px] text-slate-500">
+                                    Benar: <strong class="text-emerald-600">${p.correct}</strong> • Salah: <strong class="text-rose-600">${p.wrong}</strong>${p.steals > 0 ? ` • Rebut: <strong class="text-indigo-600">${p.steals}</strong>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <span class="inline-block px-2 py-0.5 rounded-md bg-slate-900 text-amber-400 font-mono font-bold text-[11px]">
+                                Petak ${p.position}
+                            </span>
+                            <div class="text-[10px] font-bold text-slate-600 mt-0.5">${p.score} pts</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function addLog(msg, extraClass = '') {
+            const logEl = document.getElementById('activityLog');
+            const item = document.createElement('div');
+            item.className = `p-2 rounded-xl bg-slate-50 border border-slate-200/70 ${extraClass}`;
+            item.innerHTML = `<span class="text-slate-400 font-mono mr-1">▸</span> ${msg}`;
+            logEl.prepend(item);
+        }
+
+        // --- 11. LOGIKA LEMPAR DADU 3D & PERGERAKAN STEP-BY-STEP ---
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !document.getElementById('boardScreen').classList.contains('hidden')) {
+                const activeP = state.players[state.currentPlayerIdx];
+                if (!state.isBusy && activeP && !activeP.isAI && document.getElementById('quizModal').classList.contains('hidden')) {
+                    e.preventDefault();
+                    triggerDiceRoll();
+                }
+            }
+        });
+
+        function triggerDiceRoll() {
+            const activeP = state.players[state.currentPlayerIdx];
+            if (state.isBusy || !activeP || activeP.isAI) return;
+            executeDiceRoll();
+        }
+
+        function executeDiceRoll() {
+            state.isBusy = true;
+            document.getElementById('rollDiceBtn').disabled = true;
+            SoundFX.dice();
+
+            const cube = document.getElementById('diceCube');
+            cube.classList.add('rolling');
+
+            const rollValue = Math.floor(Math.random() * 6) + 1;
+
+            const faceRotations = {
+                1: 'rotateX(0deg) rotateY(0deg)',
+                2: 'rotateX(0deg) rotateY(-90deg)',
+                3: 'rotateX(0deg) rotateY(180deg)',
+                4: 'rotateX(0deg) rotateY(90deg)',
+                5: 'rotateX(-90deg) rotateY(0deg)',
+                6: 'rotateX(90deg) rotateY(0deg)'
+            };
+
+            setTimeout(async () => {
+                cube.classList.remove('rolling');
+                cube.style.transform = faceRotations[rollValue];
+
+                const player = state.players[state.currentPlayerIdx];
+                addLog(`<strong>${player.code} (${player.name})</strong> melempar dadu: angka <strong>${rollValue}</strong>.`);
+
+                await movePlayerStepByStep(player, rollValue);
+            }, 650);
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function movePlayerStepByStep(player, steps) {
+            let current = player.position;
+            let direction = 1;
+
+            for (let s = 0; s < steps; s++) {
+                if (current === TOTAL_TILES) {
+                    direction = -1; // Memantul mundur jika melebihi Petak 36
+                }
+                current += direction;
+                player.position = current;
+                SoundFX.hop();
+                renderTokens(false);
+                updateSidebarUI();
+                await sleep(280);
+            }
+
+            // Cek apakah langsung mencapai Petak 36 (FINISH)
+            if (player.position === TOTAL_TILES) {
+                player.score += 250;
+                addLog(`🏆 <strong>${player.code} (${player.name})</strong> mencapai Petak ${TOTAL_TILES} dan memenangkan permainan!`, 'bg-amber-50 border-amber-300 text-amber-950 font-bold');
+                await sleep(500);
+                triggerVictory(player);
+                return;
+            }
+
+            evaluateTileEvent(player);
+        }
+
+        // --- 12. EVALUASI PERISTIWA PETAK, TIMER & MODE REBUTAN ---
+        function evaluateTileEvent(player) {
+            const tile = player.position;
+            const qObj = drawQuestionFromDeck();
+
+            if (LADDERS[tile]) {
+                state.activeQuizContext = {
+                    type: 'ladder',
+                    tile,
+                    targetTile: LADDERS[tile].to,
+                    eventName: LADDERS[tile].name,
+                    questionObj: qObj,
+                    isCorrect: false
+                };
+            } else if (SNAKES[tile]) {
+                state.activeQuizContext = {
+                    type: 'snake',
+                    tile,
+                    targetTile: SNAKES[tile].to,
+                    eventName: SNAKES[tile].name,
+                    questionObj: qObj,
+                    isCorrect: false
+                };
+            } else if (BONUS_TILES.includes(tile)) {
+                state.activeQuizContext = {
+                    type: 'bonus',
+                    tile,
+                    targetTile: Math.min(TOTAL_TILES, tile + 2),
+                    eventName: 'Petak Bonus Operator Del (∇)',
+                    questionObj: qObj,
+                    isCorrect: false
+                };
+            } else {
+                state.activeQuizContext = {
+                    type: 'normal',
+                    tile,
+                    targetTile: Math.max(1, tile - 2),
+                    eventName: `Tantangan Petak #${tile}`,
+                    questionObj: qObj,
+                    isCorrect: false
+                };
+            }
+
+            if (player.isAI) {
+                simulateAITurn(player);
+            } else {
+                openQuizModal();
+            }
+        }
+
+        async function simulateAITurn(aiPlayer) {
+            const ctx = state.activeQuizContext;
+            addLog(`🤖 <strong>${aiPlayer.name}</strong> sedang menyelesaikan soal <em>${ctx.questionObj.topic}</em> di Petak ${ctx.tile}...`);
+            await sleep(1100);
+
+            const aiCorrect = Math.random() < 0.70;
+            ctx.isCorrect = aiCorrect;
+
+            if (aiCorrect) {
+                aiPlayer.correct++;
+                SoundFX.correct();
+                addLog(`✅ <strong>${aiPlayer.name}</strong> menjawab BENAR!`, 'text-emerald-700');
+            } else {
+                aiPlayer.wrong++;
+                SoundFX.wrong();
+                addLog(`❌ <strong>${aiPlayer.name}</strong> keliru menghitung vektor!`, 'text-rose-700');
+            }
+
+            await resolveQuizOutcome();
+        }
+
+        function startQuizTimer() {
+            clearInterval(state.quizTimerInterval);
+            const timerBox = document.getElementById('modalTimerBox');
+            const timerText = document.getElementById('modalTimerText');
+
+            if (state.timerSetting <= 0) {
+                timerText.textContent = '∞';
+                timerBox.className = 'px-3 py-1.5 rounded-xl bg-white/15 border border-white/20 font-mono font-extrabold text-sm text-white flex items-center gap-1.5';
+                return;
+            }
+
+            state.quizTimeLeft = state.timerSetting;
+            timerText.textContent = `${state.quizTimeLeft}s`;
+            timerBox.className = 'px-3 py-1.5 rounded-xl bg-white/15 border border-white/20 font-mono font-extrabold text-sm text-white flex items-center gap-1.5';
+
+            state.quizTimerInterval = setInterval(() => {
+                if (state.quizAnswered) {
+                    clearInterval(state.quizTimerInterval);
+                    return;
+                }
+                state.quizTimeLeft--;
+                timerText.textContent = `${state.quizTimeLeft}s`;
+
+                if (state.quizTimeLeft <= 15 && state.quizTimeLeft > 0) {
+                    timerBox.className = 'px-3 py-1.5 rounded-xl bg-rose-600 border border-rose-300 font-mono font-extrabold text-sm text-white flex items-center gap-1.5 animate-pulse';
+                    SoundFX.tick();
+                }
+
+                if (state.quizTimeLeft <= 0) {
+                    clearInterval(state.quizTimerInterval);
+                    handleQuizTimeout();
+                }
+            }, 1000);
+        }
+
+        function handleQuizTimeout() {
+            if (state.quizAnswered) return;
+            state.quizAnswered = true;
+
+            const ctx = state.activeQuizContext;
+            const q = ctx.questionObj;
+            const player = state.players[state.currentPlayerIdx];
+            ctx.isCorrect = false;
+            player.wrong++;
+            SoundFX.wrong();
+
+            for (let i = 0; i < 4; i++) {
+                document.getElementById(`mOpt-${i}`).disabled = true;
+            }
+
+            const corBtn = document.getElementById(`mOpt-${q.answer}`);
+            corBtn.classList.add('border-emerald-500', 'bg-emerald-50/70');
+            corBtn.querySelector('.m-letter').className = 'm-letter w-8 h-8 rounded-xl bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0';
+
+            const fbBox = document.getElementById('modalFeedbackBox');
+            const fbTitle = document.getElementById('modalFeedbackTitle');
+            const fbExp = document.getElementById('modalFeedbackExp');
+
+            fbBox.classList.remove('hidden', 'bg-emerald-50', 'border-emerald-200', 'bg-rose-50', 'border-rose-200');
+            fbBox.classList.add('bg-rose-50', 'border-rose-200');
+            fbTitle.innerHTML = '<i class="fa-solid fa-hourglass-end text-rose-600"></i> <span class="text-rose-900">Waktu Habis! Jawaban Dianggap Salah.</span>';
+            fbExp.innerHTML = q.explanation;
+
+            showStealPanelIfApplicable();
+            document.getElementById('modalContinueBtn').classList.remove('hidden');
+            renderMath(fbBox);
+        }
+
+        function openQuizModal() {
+            const ctx = state.activeQuizContext;
+            const q = ctx.questionObj;
+            const activeP = state.players[state.currentPlayerIdx];
+
+            state.quizAnswered = false;
+            state.tabSwitchesInTurn = 0;
+            document.getElementById('tabWarningBanner').classList.add('hidden');
+            document.getElementById('stealChallengeBox').classList.add('hidden');
+
+            const banner = document.getElementById('modalBanner');
+            const icon = document.getElementById('modalBannerIcon');
+            const title = document.getElementById('modalEventTitle');
+            const desc = document.getElementById('modalEventDesc');
+
+            banner.className = 'rounded-2xl p-3.5 mb-4 flex items-center justify-between gap-3 text-white';
+
+            if (ctx.type === 'ladder') {
+                banner.classList.add('bg-emerald-900');
+                icon.className = 'w-10 h-10 rounded-xl bg-emerald-400 text-emerald-950 flex items-center justify-center text-lg font-bold shrink-0';
+                icon.innerHTML = '<i class="fa-solid fa-stairs"></i>';
+                title.textContent = `[${activeP.code}] ${ctx.eventName}`;
+                title.className = 'font-extrabold text-sm sm:text-base text-emerald-300 truncate';
+                desc.textContent = `Jawab BENAR untuk naik tangga dari Petak ${ctx.tile} ke Petak ${ctx.targetTile}!`;
+            } else if (ctx.type === 'snake') {
+                banner.classList.add('bg-rose-950');
+                icon.className = 'w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center text-lg font-bold shrink-0';
+                icon.innerHTML = '<i class="fa-solid fa-staff-snake"></i>';
+                title.textContent = `[${activeP.code}] Penawar Bisa: ${ctx.eventName}`;
+                title.className = 'font-extrabold text-sm sm:text-base text-rose-300 truncate';
+                desc.textContent = `Jawab BENAR agar selamat! Jika salah, turun ke Petak ${ctx.targetTile}.`;
+            } else if (ctx.type === 'bonus') {
+                banner.classList.add('bg-amber-900');
+                icon.className = 'w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center text-lg font-bold shrink-0';
+                icon.innerHTML = '<i class="fa-solid fa-bolt"></i>';
+                title.textContent = `[${activeP.code}] ${ctx.eventName}`;
+                title.className = 'font-extrabold text-sm sm:text-base text-amber-300 truncate';
+                desc.textContent = 'Kuis Kilat! Jawab BENAR untuk melesat maju +2 langkah ekstra!';
+            } else {
+                banner.classList.add('bg-slate-900');
+                icon.className = 'w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center text-lg font-bold shrink-0';
+                icon.innerHTML = '<i class="fa-solid fa-atom"></i>';
+                title.textContent = `[${activeP.code}] ${ctx.eventName} (${activeP.name})`;
+                title.className = 'font-extrabold text-sm sm:text-base text-amber-400 truncate';
+                desc.textContent = 'Jawab BENAR untuk bertahan (+100 poin), SALAH mundur 2 langkah!';
+            }
+
+            document.getElementById('modalTopicBadge').textContent = q.topic;
+            document.getElementById('modalQuestionText').innerHTML = q.question;
+            document.getElementById('modalFeedbackBox').classList.add('hidden');
+            document.getElementById('modalContinueBtn').classList.add('hidden');
+
+            const optContainer = document.getElementById('modalOptionsList');
+            optContainer.innerHTML = '';
+            const letters = ['A', 'B', 'C', 'D'];
+
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.id = `mOpt-${idx}`;
+                btn.onclick = () => selectQuizOption(idx);
+                btn.className = 'w-full text-left p-3.5 rounded-2xl border-2 border-slate-200 bg-white hover:border-slate-900 hover:bg-slate-50 transition-all flex items-center gap-3';
+                btn.innerHTML = `
+                    <span class="m-letter w-8 h-8 rounded-xl bg-slate-100 text-slate-800 font-extrabold text-xs flex items-center justify-center shrink-0">${letters[idx]}</span>
+                    <span class="font-semibold text-xs sm:text-sm text-slate-800 flex-grow">${opt}</span>
+                `;
+                optContainer.appendChild(btn);
+            });
+
+            const modal = document.getElementById('quizModal');
+            modal.classList.remove('hidden');
+            renderMath(modal);
+            startQuizTimer();
+        }
+
+        function showStealPanelIfApplicable() {
+            if (state.mode !== 'multi' || state.players.length < 2) return;
+            const stealBox = document.getElementById('stealChallengeBox');
+            const select = document.getElementById('stealGroupSelect');
+            select.innerHTML = '';
+
+            state.players.forEach((p, idx) => {
+                if (idx !== state.currentPlayerIdx) {
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.textContent = `${p.code} • ${p.name} (Petak ${p.position})`;
+                    select.appendChild(opt);
+                }
+            });
+
+            stealBox.classList.remove('hidden');
+        }
+
+        function awardStealBonus() {
+            const select = document.getElementById('stealGroupSelect');
+            const challengerIdx = parseInt(select.value, 10);
+            const challenger = state.players[challengerIdx];
+            if (!challenger) return;
+
+            challenger.steals++;
+            challenger.score += 75;
+            challenger.position = Math.min(TOTAL_TILES, challenger.position + 1);
+            SoundFX.correct();
+
+            document.getElementById('stealChallengeBox').classList.add('hidden');
+            renderTokens(false);
+            updateSidebarUI();
+
+            addLog(`⚡ <strong>Mode Rebutan:</strong> <strong>${challenger.code} (${challenger.name})</strong> menjawab benar dan merebut bonus <strong>+1 langkah</strong> ke Petak <strong>${challenger.position}</strong> (+75 poin)!`, 'bg-indigo-50 border-indigo-200 text-indigo-950 font-bold');
+
+            if (challenger.position === TOTAL_TILES) {
+                document.getElementById('quizModal').classList.add('hidden');
+                triggerVictory(challenger);
+            }
+        }
+
+        function selectQuizOption(selectedIdx) {
+            if (state.quizAnswered) return;
+            state.quizAnswered = true;
+            clearInterval(state.quizTimerInterval);
+
+            const ctx = state.activeQuizContext;
+            const q = ctx.questionObj;
+            const player = state.players[state.currentPlayerIdx];
+            const isCorrect = selectedIdx === q.answer;
+            ctx.isCorrect = isCorrect;
+
+            for (let i = 0; i < 4; i++) {
+                document.getElementById(`mOpt-${i}`).disabled = true;
+            }
+
+            const selBtn = document.getElementById(`mOpt-${selectedIdx}`);
+            const corBtn = document.getElementById(`mOpt-${q.answer}`);
+
+            const fbBox = document.getElementById('modalFeedbackBox');
+            const fbTitle = document.getElementById('modalFeedbackTitle');
+            const fbExp = document.getElementById('modalFeedbackExp');
+
+            fbBox.classList.remove('hidden', 'bg-emerald-50', 'border-emerald-200', 'bg-rose-50', 'border-rose-200');
+
+            if (isCorrect) {
+                player.correct++;
+                SoundFX.correct();
+                selBtn.classList.add('border-emerald-500', 'bg-emerald-50');
+                selBtn.querySelector('.m-letter').className = 'm-letter w-8 h-8 rounded-xl bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0';
+
+                fbBox.classList.add('bg-emerald-50', 'border-emerald-200');
+                fbTitle.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-600"></i> <span class="text-emerald-900">Jawaban Benar!</span>';
+            } else {
+                player.wrong++;
+                SoundFX.wrong();
+                selBtn.classList.add('border-rose-500', 'bg-rose-50');
+                selBtn.querySelector('.m-letter').className = 'm-letter w-8 h-8 rounded-xl bg-rose-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0';
+
+                corBtn.classList.add('border-emerald-500', 'bg-emerald-50/70');
+                corBtn.querySelector('.m-letter').className = 'm-letter w-8 h-8 rounded-xl bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0';
+
+                fbBox.classList.add('bg-rose-50', 'border-rose-200');
+                fbTitle.innerHTML = '<i class="fa-solid fa-circle-xmark text-rose-600"></i> <span class="text-rose-900">Jawaban Kurang Tepat!</span>';
+
+                showStealPanelIfApplicable();
+            }
+
+            fbExp.innerHTML = q.explanation;
+            document.getElementById('modalContinueBtn').classList.remove('hidden');
+            renderMath(fbBox);
+        }
+
+        async function resolveQuizOutcome() {
+            clearInterval(state.quizTimerInterval);
+            document.getElementById('quizModal').classList.add('hidden');
+            const ctx = state.activeQuizContext;
+            const player = state.players[state.currentPlayerIdx];
+
+            if (ctx.type === 'ladder') {
+                if (ctx.isCorrect) {
+                    player.score += 150;
+                    SoundFX.ladder();
+                    addLog(`🪜 <strong>${player.code} (${player.name})</strong> menjawab benar dan memanjat <strong>${ctx.eventName}</strong> ke Petak <strong>${ctx.targetTile}</strong>!`, 'bg-emerald-50 border-emerald-200 text-emerald-900');
+                    player.position = ctx.targetTile;
+                    renderTokens(true);
+                    await sleep(900);
+                } else {
+                    addLog(`⚠️ <strong>${player.code} (${player.name})</strong> gagal memanjat tangga dan tetap di Petak ${ctx.tile}.`);
+                }
+            } else if (ctx.type === 'snake') {
+                if (ctx.isCorrect) {
+                    player.score += 120;
+                    addLog(`🛡️ <strong>${player.code} (${player.name})</strong> menggunakan Penawar Bisa dan selamat dari <strong>${ctx.eventName}</strong>!`, 'bg-emerald-50 border-emerald-200 text-emerald-900');
+                } else {
+                    SoundFX.snake();
+                    addLog(`🐍 <strong>${player.code} (${player.name})</strong> tergigit <strong>${ctx.eventName}</strong> dan meluncur turun ke Petak <strong>${ctx.targetTile}</strong>!`, 'bg-rose-50 border-rose-200 text-rose-900');
+                    player.position = ctx.targetTile;
+                    renderTokens(true);
+                    await sleep(900);
+                }
+            } else if (ctx.type === 'bonus') {
+                if (ctx.isCorrect) {
+                    player.score += 130;
+                    player.position = ctx.targetTile;
+                    SoundFX.ladder();
+                    addLog(`⚡ <strong>${player.code} (${player.name})</strong> menjawab kuis Operator Del dengan benar dan melesat <strong>+2 langkah</strong> ke Petak <strong>${ctx.targetTile}</strong>!`, 'bg-amber-50 border-amber-300 text-amber-950 font-bold');
+                    renderTokens(true);
+                    await sleep(750);
+                } else {
+                    addLog(`⚡ <strong>${player.code} (${player.name})</strong> melewatkan bonus +2 langkah di Petak ${ctx.tile}.`);
+                }
+            } else {
+                // Petak Biasa
+                if (ctx.isCorrect) {
+                    player.score += 100;
+                    addLog(`✅ <strong>${player.code} (${player.name})</strong> bertahan di Petak ${ctx.tile} (+100 poin).`);
+                } else {
+                    const newPos = Math.max(1, ctx.tile - 2);
+                    addLog(`⏪ <strong>${player.code} (${player.name})</strong> salah menjawab dan mundur 2 langkah ke Petak <strong>${newPos}</strong>.`);
+                    player.position = newPos;
+                    renderTokens(false);
+                    await sleep(450);
+                }
+            }
+
+            updateSidebarUI();
+
+            if (player.position === TOTAL_TILES) {
+                triggerVictory(player);
+                return;
+            }
+
+            advanceToNextPlayer();
+        }
+
+        async function advanceToNextPlayer() {
+            state.currentPlayerIdx = (state.currentPlayerIdx + 1) % state.players.length;
+            state.isBusy = false;
+            renderTokens(false);
+            updateSidebarUI();
+
+            const nextP = state.players[state.currentPlayerIdx];
+            if (nextP.isAI) {
+                await sleep(900);
+                executeDiceRoll();
+            }
+        }
+
+        // --- 13. KEMENANGAN, KONFETI & UNDUH REKAP NILAI KELAS ---
+        function triggerVictory(winner) {
+            state.isBusy = true;
+            SoundFX.win();
+            spawnConfetti();
+
+            document.getElementById('boardScreen').classList.add('hidden');
+            document.getElementById('victoryScreen').classList.remove('hidden');
+            document.getElementById('winnerTitle').textContent = `${winner.code} • ${winner.name} Menang!`;
+
+            const sorted = [...state.players].sort((a, b) => {
+                if (b.position !== a.position) return b.position - a.position;
+                return b.score - a.score;
+            });
+
+            const list = document.getElementById('finalStandingsList');
+            list.innerHTML = '';
+            sorted.forEach((p, rank) => {
+                const totalQ = p.correct + p.wrong;
+                const acc = totalQ > 0 ? Math.round((p.correct / totalQ) * 100) : 0;
+                list.innerHTML += `
+                    <div class="p-3 rounded-2xl border ${rank === 0 ? 'border-amber-400 bg-amber-50/80' : 'border-slate-200 bg-white'} flex items-center justify-between gap-2.5">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <span class="w-8 h-8 rounded-xl ${rank === 0 ? 'bg-amber-400 text-slate-950' : 'bg-slate-200 text-slate-700'} font-extrabold text-xs flex items-center justify-center shrink-0">
+                                #${rank + 1}
+                            </span>
+                            <div class="truncate">
+                                <div class="font-extrabold text-xs sm:text-sm text-slate-900 truncate">${p.code} • ${p.name}</div>
+                                <div class="text-[11px] text-slate-500">Akurasi: <strong>${acc}%</strong> (${p.correct}B/${p.wrong}S) • Rebut: ${p.steals}</div>
+                            </div>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <div class="font-mono font-extrabold text-[11px] px-2 py-0.5 rounded bg-slate-900 text-amber-400">Petak ${p.position}</div>
+                            <div class="text-[11px] font-bold text-slate-700 mt-0.5">${p.score} Poin</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function downloadClassReport(format) {
+            const sorted = [...state.players].sort((a, b) => {
+                if (b.position !== a.position) return b.position - a.position;
+                return b.score - a.score;
+            });
+
+            let content = '';
+            let mime = 'text/plain;charset=utf-8';
+            let filename = `Rekap_UlarTangga_AnalisisVektor_${state.sessionSeed}.${format}`;
+
+            if (format === 'csv') {
+                mime = 'text/csv;charset=utf-8';
+                content = 'Peringkat,Kode_Kelompok,Nama_Kelompok,Petak_Akhir,Skor_Total,Jawaban_Benar,Jawaban_Salah,Bonus_Rebutan,Akurasi_Persen,Peringatan_Tab\n';
+                sorted.forEach((p, idx) => {
+                    const totalQ = p.correct + p.wrong;
+                    const acc = totalQ > 0 ? Math.round((p.correct / totalQ) * 100) : 0;
+                    const safeName = `"${p.name.replace(/"/g, '""')}"`;
+                    content += `${idx + 1},${p.code},${safeName},${p.position},${p.score},${p.correct},${p.wrong},${p.steals},${acc}%,${p.tabWarnings}\n`;
+                });
+            } else {
+                content = `REKAP HASIL PERMAINAN KELAS: ULAR TANGGA ANALISIS VEKTOR (S1 FISIKA)\n`;
+                content += `ID Sesi: ${state.sessionSeed} | Tanggal: ${new Date().toLocaleString('id-ID')}\n`;
+                content += `======================================================================\n\n`;
+                sorted.forEach((p, idx) => {
+                    const totalQ = p.correct + p.wrong;
+                    const acc = totalQ > 0 ? Math.round((p.correct / totalQ) * 100) : 0;
+                    content += `#${idx + 1} [${p.code}] ${p.name}\n`;
+                    content += `   Posisi Akhir : Petak ${p.position}/36 | Skor: ${p.score} poin\n`;
+                    content += `   Statistik    : ${p.correct} Benar, ${p.wrong} Salah (Akurasi ${acc}%), Rebutan: ${p.steals}x, Peringatan Tab: ${p.tabWarnings}x\n\n`;
+                });
+            }
+
+            const blob = new Blob([content], { type: mime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function openQuestionPreviewBank() {
+            document.getElementById('quickStatsModal').classList.remove('hidden');
+        }
+
+        function spawnConfetti() {
+            const colors = ['#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899'];
+            for (let i = 0; i < 65; i++) {
+                const piece = document.createElement('div');
+                piece.className = 'confetti-piece';
+                piece.style.left = Math.random() * 100 + 'vw';
+                piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+                piece.style.animationDuration = (2 + Math.random() * 2.5) + 's';
+                piece.style.animationDelay = (Math.random() * 0.6) + 's';
+                document.body.appendChild(piece);
+                setTimeout(() => piece.remove(), 5000);
+            }
+        }
+
+        function openRulesModal() {
+            const modal = document.getElementById('rulesModal');
+            modal.classList.remove('hidden');
+            renderMath(modal);
+        }
+
+        function closeRulesModal() {
+            document.getElementById('rulesModal').classList.add('hidden');
+        }
+
+        function confirmResetToLobby() {
+            if (!document.getElementById('boardScreen').classList.contains('hidden')) {
+                document.getElementById('confirmExitModal').classList.remove('hidden');
+            } else {
+                resetToLobby();
+            }
+        }
+
+        function resetToLobby() {
+            clearInterval(state.quizTimerInterval);
+            document.getElementById('confirmExitModal').classList.add('hidden');
+            document.getElementById('quizModal').classList.add('hidden');
+            document.getElementById('boardScreen').classList.add('hidden');
+            document.getElementById('victoryScreen').classList.add('hidden');
+            document.getElementById('lobbyScreen').classList.remove('hidden');
+            state.isBusy = false;
+        }
+
+        function restartSamePlayers() {
+            clearInterval(state.quizTimerInterval);
+            state.players.forEach(p => {
+                p.position = 1;
+                p.score = 0;
+                p.correct = 0;
+                p.wrong = 0;
+                p.steals = 0;
+                p.tabWarnings = 0;
+            });
+            state.currentPlayerIdx = 0;
+            state.isBusy = false;
+            state.questionDeck = fisherYatesShuffle(VECTOR_QUESTIONS);
+            updateDeckBadge();
+
+            document.getElementById('victoryScreen').classList.add('hidden');
+            document.getElementById('boardScreen').classList.remove('hidden');
+            renderTokens(false);
+            updateSidebarUI();
+            document.getElementById('activityLog').innerHTML = '';
+            addLog(`Babak baru dimulai! Giliran ${state.players[0].code} • ${state.players[0].name}.`, 'text-slate-900 font-bold');
+        }
+
+        // Ekspos fungsi handler ke global window untuk memastikan onclick selalu terbaca
+        Object.assign(window, {
+            setGameMode,
+            setPlayerCount,
+            regenerateSessionSeed,
+            toggleSound,
+            startBoardGame,
+            triggerDiceRoll,
+            selectQuizOption,
+            awardStealBonus,
+            resolveQuizOutcome,
+            openRulesModal,
+            closeRulesModal,
+            openQuestionPreviewBank,
+            downloadClassReport,
+            confirmResetToLobby,
+            resetToLobby,
+            restartSamePlayers
+        });
+    </script>
+</body>
+</html>
